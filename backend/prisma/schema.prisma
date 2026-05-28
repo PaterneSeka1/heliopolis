@@ -12,7 +12,864 @@ datasource db {
   provider = "postgresql"
 }
 
+enum UserRole {
+  ADMIN // Grand Archiviste du Codex
+  REGION // Hiérophante / Conseil d'Héliopolis
+  SENTINELLE // Sentinelle d'Héliopolis (Doyenné)
+  GUIDE // Guide du Jardin Caché (Paroisse)
+  GARDIEN // Gardien de la Création (Routier)
+}
+
+/// État du profil utilisateur
+enum ProfileStatus {
+  ACTIF
+  INACTIF
+  EN_ATTENTE_ACTIVATION
+  SUSPENDU
+  ARCHIVE
+}
+
+/// Statut d'adhésion annuelle (§5.2) — aucun montant ne doit y figurer
+enum AdhesionStatus {
+  A_JOUR
+  NON_A_JOUR
+  EN_ATTENTE
+}
+
+/// État territorial
+enum EntityStatus {
+  ACTIF
+  INACTIF
+  ARCHIVE
+}
+
+/// Type de camp (§6.1)
+enum CampType {
+  REGIONAL
+  DISTRICT
+  PAROISSIAL
+  NATIONAL
+  COMMUNAUTE
+}
+
+/// Statut d'un camp (§6.2)
+enum CampStatus {
+  BROUILLON
+  OUVERT
+  EN_COURS
+  CLOTURE
+  ARCHIVE
+}
+
+/// Statut de participation à un camp (§7.2)
+enum ParticipationStatus {
+  NON_SELECTIONNE
+  SELECTIONNE
+  CONFIRME
+  PRESENT
+  ABSENT
+  DESISTE
+  EN_ATTENTE
+}
+
+/// Statut de présence (§7.3)
+enum PresenceStatus {
+  PRESENT
+  ABSENT
+  NON_RENSEIGNE
+}
+
+/// Catégorie de défi (§11.1)
+enum ChallengeCategory {
+  PERSONNEL
+  COMMUNAUTAIRE
+  SPIRITUEL
+  LONG
+}
+
+/// Cinq règnes de l'imaginaire (utilisé pour catégoriser défis/badges)
+enum Regne {
+  EAU
+  TERRE
+  AIR
+  FEU
+  ESPRIT
+}
+
+enum ChallengeLevel {
+  DECOUVERTE
+  ENGAGEMENT
+  MAITRISE
+}
+
+enum ChallengeStatus {
+  ACTIF
+  INACTIF
+  ARCHIVE
+}
+
+/// Soumission d'une preuve de défi
+enum SubmissionStatus {
+  EN_ATTENTE
+  VALIDE
+  REJETE
+  CORRECTION_DEMANDEE
+}
+
+enum BadgeLevel {
+  BRONZE
+  ARGENT
+  OR
+  LEGENDE
+}
+
+/// Portée d'une annonce
+enum AnnouncementScope {
+  COMMUNAUTE
+  REGION
+  DOYENNE
+  PAROISSE
+}
+
+enum AnnouncementStatus {
+  BROUILLON
+  PUBLIE
+  ARCHIVE
+}
+
+/// Type de conversation (messagerie)
+enum ConversationType {
+  COMMUNAUTE // canal global modéré
+  REGION
+  DOYENNE
+  PAROISSE
+  PRIVE // 1-à-1
+  GROUPE // groupe libre (équipe de camp, comité…)
+}
+
+enum ConversationMemberRole {
+  OWNER
+  MODERATEUR
+  MEMBRE
+}
+
+enum MessageStatus {
+  ENVOYE
+  LIVRE
+  LU
+  SUPPRIME
+}
+
+enum MessageType {
+  TEXTE
+  IMAGE
+  FICHIER
+  AUDIO
+  SYSTEME
+}
+
+/// Modération de contenu (Mur du Codex et messages publics)
+enum ModerationStatus {
+  EN_ATTENTE
+  APPROUVE
+  REJETE
+}
+
+enum MediaKind {
+  PHOTO_CAMP
+  AFFICHE_CAMP
+  PREUVE_DEFI
+  AVATAR
+  BADGE
+  CERTIFICAT
+  PIECE_JOINTE
+  AUTRE
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  EXPORT
+  STATUS_CHANGE
+  VALIDATE
+  REJECT
+}
+
+enum ContactStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  BLOCKED
+}
+
+// =============================================================
+//  TERRITOIRES (§4)
+// =============================================================
+
+model Region {
+  id            String       @id @default(cuid())
+  nom           String       @unique
+  code          String?      @unique
+  statut        EntityStatus @default(ACTIF)
+  responsable   User?        @relation("RegionResponsable", fields: [responsableId], references: [id], onDelete: SetNull)
+  responsableId String?      @unique
+
+  districts     District[]
+  users         User[]         @relation("UserRegion")
+  camps         Camp[]
+  announcements Announcement[]
+  conversations Conversation[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("regions")
+}
+
+/// District scout = Doyenné Église
+model District {
+  id            String       @id @default(cuid())
+  nom           String
+  code          String?
+  region        Region       @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  regionId      String
+  responsable   User?        @relation("DistrictResponsable", fields: [responsableId], references: [id], onDelete: SetNull)
+  responsableId String?      @unique
+  statut        EntityStatus @default(ACTIF)
+
+  parishes      Parish[]
+  users         User[]            @relation("UserDistrict")
+  campLinks     CampDistrict[]
+  participants  CampParticipant[]
+  announcements Announcement[]
+  conversations Conversation[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([regionId, nom])
+  @@index([regionId])
+  @@map("districts")
+}
+
+model Parish {
+  id         String       @id @default(cuid())
+  nom        String
+  district   District     @relation(fields: [districtId], references: [id], onDelete: Cascade)
+  districtId String
+  guide      User?        @relation("ParishGuide", fields: [guideId], references: [id], onDelete: SetNull)
+  guideId    String?      @unique
+  statut     EntityStatus @default(ACTIF)
+
+  members       User[]            @relation("UserParish")
+  participants  CampParticipant[]
+  communities   Community[]
+  announcements Announcement[]
+  conversations Conversation[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([districtId, nom])
+  @@index([districtId])
+  @@map("parishes")
+}
+
+/// Communauté / Groupe local (facultatif §13)
+model Community {
+  id       String       @id @default(cuid())
+  nom      String
+  parish   Parish       @relation(fields: [parishId], references: [id], onDelete: Cascade)
+  parishId String
+  statut   EntityStatus @default(ACTIF)
+  members  User[]       @relation("UserCommunity")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([parishId, nom])
+  @@map("communities")
+}
+
+// =============================================================
+//  UTILISATEURS & ADHÉSIONS (§5)
+// =============================================================
+
 model User {
-  id    Int     @id @default(autoincrement())
-  name  String?
+  id            String        @id @default(cuid())
+  nom           String
+  prenoms       String
+  /// Matricule national, format 7 chiffres + 1 lettre (ex: 0525247O)
+  /// Géré par la Nation, jamais généré par la plateforme (§5.1)
+  matricule     String?       @unique
+  email         String?       @unique
+  telephone     String?       @unique
+  passwordHash  String?
+  avatarUrl     String?
+  dateNaissance DateTime?     @db.Date
+  sexe          String?       @db.Char(1)
+  role          UserRole      @default(GARDIEN)
+  statutProfil  ProfileStatus @default(EN_ATTENTE_ACTIVATION)
+
+  // Rattachements territoriaux
+  region      Region?    @relation("UserRegion", fields: [regionId], references: [id], onDelete: SetNull)
+  regionId    String?
+  district    District?  @relation("UserDistrict", fields: [districtId], references: [id], onDelete: SetNull)
+  districtId  String?
+  parish      Parish?    @relation("UserParish", fields: [parishId], references: [id], onDelete: SetNull)
+  parishId    String?
+  community   Community? @relation("UserCommunity", fields: [communityId], references: [id], onDelete: SetNull)
+  communityId String?
+
+  // Relations inverses pour responsabilités
+  regionDirigee   Region?   @relation("RegionResponsable")
+  districtDirige  District? @relation("DistrictResponsable")
+  paroisseDirigee Parish?   @relation("ParishGuide")
+
+  // Adhésions, camps, défis
+  adhesions            Adhesion[]        @relation("UserAdhesions")
+  adhesionsValidated   Adhesion[]        @relation("AdhesionValidator")
+  campsCreated         Camp[]            @relation("CampCreator")
+  participations       CampParticipant[]
+  selectionsMade       CampParticipant[] @relation("CampSelectedBy")
+  presenceMarks        PresenceLog[]     @relation("PresenceMarkedBy")
+  submissions          Submission[]      @relation("SubmissionAuthor")
+  submissionsValidated Submission[]      @relation("SubmissionValidator")
+  badges               UserBadge[]
+  challengesCreated    Challenge[]       @relation("ChallengeCreator")
+
+  // Messagerie
+  conversationMemberships ConversationMember[]
+  messages                Message[]
+  messageReceipts         MessageReadReceipt[]
+
+  // Médias
+  mediaUploaded Media[] @relation("MediaUploader")
+
+  // Annonces & modération
+  announcements     Announcement[]  @relation("AnnouncementAuthor")
+  moderationActions ModerationLog[] @relation("Moderator")
+
+  // Contacts
+  contactsInitiated Contact[] @relation("ContactRequester")
+  contactsReceived  Contact[] @relation("ContactReceiver")
+
+  // Auth & audit
+  refreshTokens RefreshToken[]
+  auditLogs     AuditLog[]     @relation("AuditActor")
+
+  // Préférences
+  notifPush  Boolean @default(true)
+  notifEmail Boolean @default(false)
+  langue     String  @default("fr")
+
+  lastLoginAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([role])
+  @@index([parishId])
+  @@index([districtId])
+  @@index([regionId])
+  @@index([nom, prenoms])
+  @@map("users")
+}
+
+/// Adhésion annuelle (§5.2 / §5.3)
+/// Une ligne par membre et par année — aucun montant n'est stocké
+model Adhesion {
+  id                 String         @id @default(cuid())
+  user               User           @relation("UserAdhesions", fields: [userId], references: [id], onDelete: Cascade)
+  userId             String
+  annee              Int
+  statut             AdhesionStatus @default(EN_ATTENTE)
+  validateur         User?          @relation("AdhesionValidator", fields: [validateurId], references: [id], onDelete: SetNull)
+  validateurId       String?
+  dateValidation     DateTime?
+  commentaireInterne String?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  /// Une seule adhésion par membre et par année
+  @@unique([userId, annee])
+  @@index([annee, statut])
+  @@map("adhesions")
+}
+
+/// Token de rafraîchissement pour l'auth JWT
+model RefreshToken {
+  id        String    @id @default(cuid())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  tokenHash String    @unique
+  userAgent String?
+  ip        String?
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// =============================================================
+//  CAMPS (§6, §7)
+// =============================================================
+
+model Camp {
+  id                 String     @id @default(cuid())
+  nom                String
+  theme              String?
+  description        String?
+  dateDebut          DateTime   @db.Date
+  dateFin            DateTime   @db.Date
+  lieu               String
+  type               CampType
+  statut             CampStatus @default(BROUILLON)
+  imageUrl           String?
+  selectionOuverte   Boolean    @default(false)
+  commentaireInterne String?
+
+  region   Region? @relation(fields: [regionId], references: [id], onDelete: SetNull)
+  regionId String?
+
+  /// Districts/doyennés concernés (n-n)
+  districts     CampDistrict[]
+  participants  CampParticipant[]
+  presences     PresenceLog[]
+  challenges    Challenge[]       @relation("CampChallenges")
+  media         Media[]
+  conversations Conversation[]
+
+  createdBy   User   @relation("CampCreator", fields: [createdById], references: [id])
+  createdById String
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  archivedAt DateTime?
+
+  @@index([statut, dateDebut])
+  @@index([type])
+  @@map("camps")
+}
+
+/// Lien n-n entre Camp et District (§13 Camp_Districts)
+model CampDistrict {
+  camp       Camp     @relation(fields: [campId], references: [id], onDelete: Cascade)
+  campId     String
+  district   District @relation(fields: [districtId], references: [id], onDelete: Cascade)
+  districtId String
+  createdAt  DateTime @default(now())
+
+  @@id([campId, districtId])
+  @@map("camp_districts")
+}
+
+/// Participant à un camp (§7 / §17.5)
+model CampParticipant {
+  id     String @id @default(cuid())
+  camp   Camp   @relation(fields: [campId], references: [id], onDelete: Cascade)
+  campId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  /// Snapshot territorial au moment de la sélection (immutable)
+  district   District @relation(fields: [districtId], references: [id])
+  districtId String
+  parish     Parish   @relation(fields: [parishId], references: [id])
+  parishId   String
+  roleAtCamp UserRole @default(GARDIEN)
+
+  /// Snapshot du statut d'adhésion au moment de la sélection (§17.5)
+  /// Permet de conserver l'état même si l'adhésion change après
+  adhesionStatusSnapshot AdhesionStatus
+  participationStatus    ParticipationStatus @default(SELECTIONNE)
+  presenceStatus         PresenceStatus      @default(NON_RENSEIGNE)
+
+  selectedBy         User     @relation("CampSelectedBy", fields: [selectedById], references: [id])
+  selectedById       String
+  selectedAt         DateTime @default(now())
+  commentaireInterne String?
+
+  presences PresenceLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// Un membre ne peut figurer qu'une fois par camp
+  @@unique([campId, userId])
+  @@index([campId, participationStatus])
+  @@index([campId, districtId])
+  @@index([campId, parishId])
+  @@map("camp_participants")
+}
+
+/// Historique des marques de présence (§7.3 + traçabilité §15)
+model PresenceLog {
+  id            String          @id @default(cuid())
+  camp          Camp            @relation(fields: [campId], references: [id], onDelete: Cascade)
+  campId        String
+  participant   CampParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  participantId String
+  statut        PresenceStatus
+  markedBy      User            @relation("PresenceMarkedBy", fields: [markedById], references: [id])
+  markedById    String
+  commentaire   String?
+  markedAt      DateTime        @default(now())
+
+  @@index([campId])
+  @@index([participantId])
+  @@map("presence_logs")
+}
+
+// =============================================================
+//  DÉFIS, SOUMISSIONS, BADGES (§11)
+// =============================================================
+
+model Challenge {
+  id             String            @id @default(cuid())
+  titre          String
+  description    String
+  categorie      ChallengeCategory
+  regne          Regne?
+  niveau         ChallengeLevel    @default(DECOUVERTE)
+  preuveDemandee String?
+  points         Int               @default(0)
+  imageUrl       String?
+  statut         ChallengeStatus   @default(ACTIF)
+
+  camp   Camp?   @relation("CampChallenges", fields: [campId], references: [id], onDelete: SetNull)
+  campId String?
+
+  createdBy   User   @relation("ChallengeCreator", fields: [createdById], references: [id])
+  createdById String
+
+  submissions Submission[]
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  archivedAt DateTime?
+
+  @@index([categorie, statut])
+  @@map("challenges")
+}
+
+model Submission {
+  id          String           @id @default(cuid())
+  challenge   Challenge        @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  challengeId String
+  gardien     User             @relation("SubmissionAuthor", fields: [gardienId], references: [id], onDelete: Cascade)
+  gardienId   String
+  preuveUrl   String?
+  texte       String?
+  commentaire String?
+  statut      SubmissionStatus @default(EN_ATTENTE)
+
+  validateur            User?     @relation("SubmissionValidator", fields: [validateurId], references: [id], onDelete: SetNull)
+  validateurId          String?
+  commentaireValidateur String?
+  submittedAt           DateTime  @default(now())
+  validatedAt           DateTime?
+
+  /// Modération avant publication sur le Mur du Codex (§15)
+  moderation       ModerationStatus @default(EN_ATTENTE)
+  publishedToCodex Boolean          @default(false)
+
+  media     Media[]
+  reactions CodexReaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([gardienId, statut])
+  @@index([challengeId, statut])
+  @@map("submissions")
+}
+
+model Badge {
+  id          String     @id @default(cuid())
+  nom         String     @unique
+  code        String     @unique
+  description String
+  condition   String
+  imageUrl    String?
+  niveau      BadgeLevel @default(BRONZE)
+
+  /// Ex : { type: "challenges_validated", count: 5 }
+  /// Ou : { type: "communautaire_validated", count: 1 }
+  conditionMeta Json?
+
+  users UserBadge[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("badges")
+}
+
+model UserBadge {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  badge     Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  badgeId   String
+  awardedAt DateTime @default(now())
+
+  @@unique([userId, badgeId])
+  @@index([userId])
+  @@map("user_badges")
+}
+
+/// Réactions sur les publications du Mur du Codex
+model CodexReaction {
+  id           String     @id @default(cuid())
+  submission   Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  submissionId String
+  userId       String
+  emoji        String     @default("❤️")
+  createdAt    DateTime   @default(now())
+
+  @@unique([submissionId, userId, emoji])
+  @@map("codex_reactions")
+}
+
+// =============================================================
+//  MESSAGERIE (chat multi-portée)
+// =============================================================
+
+model Conversation {
+  id          String           @id @default(cuid())
+  type        ConversationType
+  /// Nom du canal (Communauté Mahatma Gandhi, Doyenné de Cocody…)
+  /// Null pour les conversations privées
+  nom         String?
+  description String?
+  avatarUrl   String?
+  isPinned    Boolean          @default(false)
+  isModerated Boolean          @default(false)
+  isReadOnly  Boolean          @default(false)
+
+  // Périmètre territorial (un seul de ces 4 est rempli selon le type)
+  region     Region?   @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  regionId   String?
+  district   District? @relation(fields: [districtId], references: [id], onDelete: Cascade)
+  districtId String?
+  parish     Parish?   @relation(fields: [parishId], references: [id], onDelete: Cascade)
+  parishId   String?
+  /// Si lié à un camp (groupe d'équipe par ex.)
+  camp       Camp?     @relation(fields: [campId], references: [id], onDelete: Cascade)
+  campId     String?
+
+  members  ConversationMember[]
+  messages Message[]
+
+  /// Dernier message pour tri rapide de la liste
+  lastMessageAt DateTime?
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  archivedAt DateTime?
+
+  @@index([type])
+  @@index([districtId])
+  @@index([parishId])
+  @@index([lastMessageAt])
+  @@map("conversations")
+}
+
+model ConversationMember {
+  id             String                 @id @default(cuid())
+  conversation   Conversation           @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversationId String
+  user           User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String
+  role           ConversationMemberRole @default(MEMBRE)
+  mutedUntil     DateTime?
+  lastReadAt     DateTime?
+  joinedAt       DateTime               @default(now())
+  leftAt         DateTime?
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+  @@map("conversation_members")
+}
+
+model Message {
+  id             String        @id @default(cuid())
+  conversation   Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversationId String
+  author         User?         @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  authorId       String?
+  type           MessageType   @default(TEXTE)
+  contenu        String?
+  /// Pour message-réponse
+  replyTo        Message?      @relation("MessageReply", fields: [replyToId], references: [id], onDelete: SetNull)
+  replyToId      String?
+  replies        Message[]     @relation("MessageReply")
+  status         MessageStatus @default(ENVOYE)
+
+  /// Modération pour canaux publics (§15)
+  moderation ModerationStatus @default(APPROUVE)
+  editedAt   DateTime?
+  deletedAt  DateTime?
+
+  attachments  MessageAttachment[]
+  readReceipts MessageReadReceipt[]
+
+  createdAt DateTime @default(now())
+
+  @@index([conversationId, createdAt])
+  @@index([authorId])
+  @@map("messages")
+}
+
+model MessageAttachment {
+  id        String   @id @default(cuid())
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  messageId String
+  media     Media?   @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  mediaId   String?
+  url       String
+  mimeType  String?
+  taille    Int?
+  createdAt DateTime @default(now())
+
+  @@map("message_attachments")
+}
+
+model MessageReadReceipt {
+  id        String   @id @default(cuid())
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  messageId String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  readAt    DateTime @default(now())
+
+  @@unique([messageId, userId])
+  @@index([userId, readAt])
+  @@map("message_read_receipts")
+}
+
+// =============================================================
+//  ANNONCES, MÉDIAS, MODÉRATION, AUDIT
+// =============================================================
+
+model Announcement {
+  id         String            @id @default(cuid())
+  titre      String
+  contenu    String
+  portee     AnnouncementScope
+  /// Selon la portée, l'un de ces 3 IDs est rempli
+  region     Region?           @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  regionId   String?
+  district   District?         @relation(fields: [districtId], references: [id], onDelete: Cascade)
+  districtId String?
+  parish     Parish?           @relation(fields: [parishId], references: [id], onDelete: Cascade)
+  parishId   String?
+
+  statut   AnnouncementStatus @default(BROUILLON)
+  author   User               @relation("AnnouncementAuthor", fields: [authorId], references: [id])
+  authorId String
+
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  archivedAt  DateTime?
+
+  @@index([portee, statut, publishedAt])
+  @@map("announcements")
+}
+
+model Media {
+  id           String    @id @default(cuid())
+  kind         MediaKind
+  url          String
+  thumbnailUrl String?
+  mimeType     String?
+  taille       Int?
+  width        Int?
+  height       Int?
+  description  String?
+
+  uploadedBy   User   @relation("MediaUploader", fields: [uploadedById], references: [id])
+  uploadedById String
+
+  /// Rattachements possibles (mutuellement exclusifs ou cumulables)
+  camp         Camp?       @relation(fields: [campId], references: [id], onDelete: SetNull)
+  campId       String?
+  submission   Submission? @relation(fields: [submissionId], references: [id], onDelete: SetNull)
+  submissionId String?
+
+  /// Visibilité publique pour le site (Mur du Codex, galeries)
+  isPublic Boolean @default(false)
+
+  attachments MessageAttachment[]
+
+  createdAt DateTime @default(now())
+
+  @@index([kind])
+  @@index([campId])
+  @@map("media")
+}
+
+/// Trace de modération (Mur du Codex, messages publics, soumissions)
+model ModerationLog {
+  id          String           @id @default(cuid())
+  targetType  String // "Submission" | "Message" | "Announcement"
+  targetId    String
+  action      ModerationStatus
+  reason      String?
+  moderator   User             @relation("Moderator", fields: [moderatorId], references: [id])
+  moderatorId String
+  createdAt   DateTime         @default(now())
+
+  @@index([targetType, targetId])
+  @@index([moderatorId])
+  @@map("moderation_logs")
+}
+
+// =============================================================
+//  CONTACTS (demandes d'amis inter-paroisses)
+// =============================================================
+
+model Contact {
+  id          String        @id @default(cuid())
+  requester   User          @relation("ContactRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  requesterId String
+  receiver    User          @relation("ContactReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  receiverId  String
+  status      ContactStatus @default(PENDING)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@unique([requesterId, receiverId])
+  @@index([receiverId, status])
+  @@index([requesterId, status])
+  @@map("contacts")
+}
+
+/// Journal d'audit (§15) — auteur, date, action, ancienne/nouvelle valeur
+model AuditLog {
+  id         String      @id @default(cuid())
+  actor      User?       @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  actorId    String?
+  action     AuditAction
+  entityType String // "User" | "Camp" | "Adhesion" | "CampParticipant" | …
+  entityId   String
+  /// Diff JSON : { before: {...}, after: {...} }
+  diff       Json?
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime    @default(now())
+
+  @@index([entityType, entityId])
+  @@index([actorId, createdAt])
+  @@map("audit_logs")
 }
