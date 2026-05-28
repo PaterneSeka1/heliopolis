@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import { territoriesApi, usersApi } from '@/lib/api';
 import { Select } from '@/components/ui';
 import type { District, Parish, User } from '@/types';
@@ -49,7 +48,6 @@ function ParoissesContent() {
     })();
   }, [selectedDistrictId]);
 
-  // Map guide and gardien counts by parish
   const guideByParish = new Map<string, User>();
   for (const g of guides) {
     if (g.parish?.id) guideByParish.set(g.parish.id, g);
@@ -120,7 +118,7 @@ function ParoissesContent() {
           <table className="w-full text-xs border-collapse">
             <thead>
               <tr className="bg-[#f9f9fc] text-[#6b6b78] uppercase tracking-wide">
-                {['Paroisse', 'Doyenné', 'Guide', 'Gardiens', 'Adhésions à jour', 'Actions'].map(h => (
+                {['Paroisse', 'Doyenné', 'Guide', 'Gardiens', 'Adhésions à jour'].map(h => (
                   <th key={h} className="text-left px-4 py-3 font-semibold border-b border-[#ececf0]">{h}</th>
                 ))}
               </tr>
@@ -141,13 +139,6 @@ function ParoissesContent() {
                     </td>
                     <td className="px-4 py-3 text-center font-semibold text-[#1F1B2E]">{nbGardiens}</td>
                     <td className="px-4 py-3 text-[#6b6b78]">{adhStr}</td>
-                    <td className="px-4 py-3">
-                      <Link
-                        href={`/dashboard/region/paroisses?districtId=${parish.district?.id ?? selectedDistrictId}`}
-                        className="text-[11px] border border-[#e6e6ea] text-[#1F1B2E] rounded-lg px-2.5 py-1 font-semibold hover:bg-[#f6f6fa] transition-colors">
-                        Voir
-                      </Link>
-                    </td>
                   </tr>
                 );
               })}
@@ -159,7 +150,7 @@ function ParoissesContent() {
   );
 }
 
-export default function ParoissesPage() {
+export default function AdminParoissesPage() {
   return (
     <Suspense fallback={<div className="flex-1 flex items-center justify-center text-[#6b6b78] text-sm">Chargement…</div>}>
       <ParoissesContent />

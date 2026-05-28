@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { messagingApi, contactsApi } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 import type { Conversation, ContactItem, ContactUser, Contact } from '@/types';
@@ -29,29 +30,29 @@ export default function MessagesPage() {
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
-      <div className="bg-gradient-to-br from-[#6A1B9A] to-[#4a1370] text-white px-4 pt-4 pb-0 flex-shrink-0">
+      <div className="bg-white border-b border-[#ececf0] px-4 pt-4 pb-0 flex-shrink-0">
         <div className="flex items-center gap-2.5 mb-3">
-          <div className="w-11 h-11 rounded-full bg-white/20 border-2 border-white/30 flex items-center justify-center font-bold text-base flex-shrink-0">
+          <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#F58A4B] to-[#C62828] flex items-center justify-center font-bold text-base text-white flex-shrink-0">
             {user ? `${user.nom[0]}${user.prenoms[0]}`.toUpperCase() : '?'}
           </div>
           <div className="flex-1">
-            <h1 className="text-lg font-bold">{user?.prenoms} {user?.nom}</h1>
-            <p className="text-xs opacity-85">💬 Messages · {user?.region?.nom ?? "Région d'Abidjan"}</p>
+            <h1 className="text-lg font-black text-[#1F1B2E]">{user?.prenoms} {user?.nom}</h1>
+            <p className="text-xs text-[#6b6b78]">💬 Messages · {user?.region?.nom ?? "Région d'Abidjan"}</p>
           </div>
         </div>
 
-        <div className="flex border-b border-white/20">
+        <div className="flex">
           {(['messages', 'contacts'] as Tab[]).map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
               className={`flex-1 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors relative ${
-                tab === t ? 'text-white' : 'text-white/50'
+                tab === t ? 'text-[#1F1B2E]' : 'text-[#6b6b78]'
               }`}
             >
               {t === 'messages' ? '💬 Messages' : '👥 Contacts'}
               {tab === t && (
-                <span className="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-white rounded-t-full" />
+                <span className="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-[#C62828] rounded-t-full" />
               )}
             </button>
           ))}
@@ -168,6 +169,7 @@ function MessagesTab() {
 
 function ContactsTab() {
   const { user } = useAuthStore();
+  const router = useRouter();
   const [parish, setParish]       = useState<ContactUser[]>([]);
   const [accepted, setAccepted]   = useState<ContactItem[]>([]);
   const [received, setReceived]   = useState<Contact[]>([]);
@@ -176,7 +178,17 @@ function ContactsTab() {
   const [searchRes, setSearchRes] = useState<ContactUser[]>([]);
   const [searching, setSearching] = useState(false);
   const [loading, setLoading]     = useState(true);
+  const [dmLoading, setDmLoading] = useState<string | null>(null);
   const canSearch = searchQ.length >= 2;
+
+  const handleDM = async (userId: string) => {
+    setDmLoading(userId);
+    try {
+      const { data } = await messagingApi.createPrivate(userId);
+      router.push(`/dashboard/admin/messages/${data.id}`);
+    } catch { /* ignore */ }
+    finally { setDmLoading(null); }
+  };
   const visibleSearchRes = canSearch ? searchRes : [];
 
   const reload = useCallback(() => {
@@ -328,12 +340,13 @@ function ContactsTab() {
               key={u.id}
               user={u}
               action={
-                <Link
-                  href="/dashboard/admin/messages"
-                  className="text-[11px] bg-[#6A1B9A] text-white px-3 py-1 rounded-full font-bold"
+                <button
+                  onClick={() => handleDM(u.id)}
+                  disabled={dmLoading === u.id}
+                  className="text-[11px] bg-[#6A1B9A] text-white px-3 py-1 rounded-full font-bold disabled:opacity-50"
                 >
-                  💬
-                </Link>
+                  {dmLoading === u.id ? '…' : '💬'}
+                </button>
               }
             />
           ))}
@@ -349,12 +362,13 @@ function ContactsTab() {
               user={c.user}
               sub={c.user.parish?.nom}
               action={
-                <Link
-                  href="/dashboard/admin/messages"
-                  className="text-[11px] bg-[#1F1B2E] text-white px-3 py-1 rounded-full font-bold"
+                <button
+                  onClick={() => handleDM(c.user.id)}
+                  disabled={dmLoading === c.user.id}
+                  className="text-[11px] bg-[#1F1B2E] text-white px-3 py-1 rounded-full font-bold disabled:opacity-50"
                 >
-                  💬
-                </Link>
+                  {dmLoading === c.user.id ? '…' : '💬'}
+                </button>
               }
             />
           ))}

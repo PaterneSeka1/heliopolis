@@ -54,10 +54,10 @@ export default function CodexPage() {
   };
 
   return (
-    <div className="p-6">
+    <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 lg:p-6">
       {/* Top bar */}
-      <div className="px-6 py-4 flex justify-between items-center mb-5 border-b border-[#ececf0] bg-white -mx-6 -mt-6">
-        <h1 className="text-2xl font-black text-[#1F1B2E]">🪶 Mur du Codex</h1>
+      <div className="flex justify-between items-center mb-5 border-b border-[#ececf0] pb-4">
+        <h1 className="text-xl lg:text-2xl font-black text-[#1F1B2E]">🪶 Mur du Codex</h1>
         {pending.length > 0 && (
           <Pill variant="or">{pending.length} en attente</Pill>
         )}

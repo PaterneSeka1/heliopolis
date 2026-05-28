@@ -8,65 +8,72 @@ import type { Conversation, Message } from '@/types';
 
 const CONV_TYPE_HEADER: Record<string, { label: string; gradient: string }> = {
   COMMUNAUTE: { label: '🌍 Communauté Mahatma Gandhi', gradient: 'from-[#F58A4B] to-[#C62828]' },
-  REGION:     { label: '🗺️ Région', gradient: 'from-[#F58A4B] to-[#C62828]' },
-  DOYENNE:    { label: '🛡️ Doyenné', gradient: 'from-[#6A1B9A] to-[#3d1163]' },
-  PAROISSE:   { label: '⛪ Paroisse', gradient: 'from-[#C62828] to-[#7a1717]' },
-  PRIVE:      { label: '🤝 Conversation privée', gradient: 'from-[#1F1B2E] to-[#3a1d4d]' },
-  GROUPE:     { label: '👥 Groupe', gradient: 'from-[#2E7D32] to-[#1a5021]' },
+  REGION:     { label: '🗺️ Région',                   gradient: 'from-[#F58A4B] to-[#C62828]' },
+  DOYENNE:    { label: '🛡️ Doyenné',                  gradient: 'from-[#6A1B9A] to-[#3d1163]' },
+  PAROISSE:   { label: '⛪ Paroisse',                  gradient: 'from-[#C62828] to-[#7a1717]' },
+  PRIVE:      { label: '🤝 Conversation privée',       gradient: 'from-[#1F1B2E] to-[#3a1d4d]' },
+  GROUPE:     { label: '👥 Groupe',                    gradient: 'from-[#2E7D32] to-[#1a5021]' },
 };
 
-export default function ChatPage({ params }: { params: Promise<{ id: string }> }) {
+export default function AdminChatPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
   const { user, accessToken } = useAuthStore();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
-  const [convType, setConvType] = useState('PRIVE');
+  const [sending, setSending] = useState(false);
+  const [convType, setConvType] = useState('REGION');
   const [convNom, setConvNom] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  // Charger l'historique et les infos de la conversation
   useEffect(() => {
-    messagingApi.messages(id).then(r => {
-      setMessages(r.data);
-      messagingApi.conversations().then(cr => {
+    messagingApi.messages(id)
+      .then(r => {
+        setMessages(r.data);
+        return messagingApi.conversations();
+      })
+      .then(cr => {
         const conv = (cr.data as Conversation[]).find(c => c.id === id);
         if (conv) { setConvType(conv.type); setConvNom(conv.nom ?? ''); }
-      });
-    }).catch(() => {});
+      })
+      .catch(() => {});
     messagingApi.markRead(id).catch(() => {});
   }, [id]);
 
+  // Scroll au dernier message
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // WebSocket — uniquement pour RECEVOIR les nouveaux messages
   useEffect(() => {
     if (!accessToken) return;
     const socket = getSocket(accessToken);
     socket.emit('join:conversation', id);
-
     socket.on('new:message', (msg: Message) => {
-      setMessages(prev => [...prev, msg]);
+      setMessages(prev => prev.some(m => m.id === msg.id) ? prev : [...prev, msg]);
     });
-
     return () => {
       socket.emit('leave:conversation', id);
       socket.off('new:message');
     };
   }, [id, accessToken]);
 
+  // Envoi via REST API (fiable) — le serveur diffuse via WebSocket
   const sendMessage = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || sending) return;
     const text = input;
     setInput('');
+    setSending(true);
     try {
-      if (accessToken) {
-        const socket = getSocket(accessToken);
-        socket.emit('send:message', { conversationId: id, contenu: text });
-      } else {
-        await messagingApi.send(id, text);
-      }
-    } catch { /* fallback */ }
+      const { data } = await messagingApi.send(id, text);
+      setMessages(prev => [...prev, data]);
+    } catch {
+      setInput(text);
+    } finally {
+      setSending(false);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -76,22 +83,27 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
   const header = CONV_TYPE_HEADER[convType] ?? CONV_TYPE_HEADER.PRIVE;
 
   return (
-    <div className="flex flex-col h-screen max-h-screen">
+    /* flex-1 overflow-hidden au lieu de h-screen pour s'adapter au layout parent */
+    <div className="flex flex-col flex-1 overflow-hidden">
+      {/* Header */}
       <div className={`bg-gradient-to-r ${header.gradient} text-white px-4 py-2.5 flex items-center gap-2.5 flex-shrink-0`}>
-        <button onClick={() => router.back()}
-          className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center">‹</button>
+        <button
+          onClick={() => router.back()}
+          className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center"
+        >‹</button>
         <div className="flex-1 min-w-0">
           <div className="font-bold text-sm">{convNom || header.label}</div>
           <div className="text-[11px] opacity-85">
-            {convType === 'COMMUNAUTE' ? '847 membres · Annonces régionales' : 'Conversation chiffrée'}
+            {convType === 'REGION' ? `${messages.length} messages` : 'Conversation'}
           </div>
         </div>
       </div>
 
+      {/* Zone de messages */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden bg-[#f6f4f0] px-4 py-3 flex flex-col gap-2 lg:max-w-4xl lg:mx-auto lg:w-full">
-        {convType === 'PRIVE' && (
-          <div className="self-center text-[10px] text-[#6b6b78] bg-[#6A1B9A]/10 px-4 py-1.5 rounded-full">
-            🔒 Conversation chiffrée de bout en bout
+        {messages.length === 0 && (
+          <div className="self-center text-[11px] text-[#6b6b78] bg-white/60 px-4 py-2 rounded-full mt-4">
+            Aucun message — commencez la conversation
           </div>
         )}
 
@@ -114,7 +126,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
               )}
               <div className={`px-3 py-2.5 rounded-[18px] text-sm leading-relaxed ${
                 isMine
-                  ? 'bg-gradient-to-br from-[#C62828] to-[#8e1a1a] text-white rounded-br-[5px]'
+                  ? 'bg-gradient-to-br from-[#6A1B9A] to-[#3d1163] text-white rounded-br-[5px]'
                   : 'bg-white text-[#1F1B2E] shadow-sm rounded-bl-[5px]'
               }`}>
                 {msg.contenu}
@@ -129,22 +141,22 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
         <div ref={bottomRef} />
       </div>
 
-      <div className="flex-shrink-0 bg-white border-t border-[#e6e6ea] px-2.5 py-2 flex items-center gap-1.5 pb-safe">
-        <button className="w-10 h-10 rounded-full bg-[#f0f0f4] flex items-center justify-center text-lg text-[#6A1B9A]">😊</button>
+      {/* Barre d'input — toujours visible */}
+      <div className="flex-shrink-0 bg-white border-t border-[#e6e6ea] px-3 py-2.5 flex items-center gap-2 lg:max-w-4xl lg:mx-auto lg:w-full">
         <input
-          className="flex-1 bg-[#f6f6fa] border border-[#ececf0] rounded-full px-4 py-2.5 text-sm outline-none"
+          className="flex-1 bg-[#f6f6fa] border border-[#ececf0] rounded-full px-4 py-2.5 text-sm outline-none focus:border-[#6A1B9A] transition-colors"
           placeholder="Écrire un message…"
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
+          disabled={sending}
         />
-        <button className="w-10 h-10 rounded-full bg-[#f0f0f4] flex items-center justify-center text-lg">📷</button>
         <button
           onClick={sendMessage}
-          disabled={!input.trim()}
-          className="w-10 h-10 rounded-full bg-gradient-to-br from-[#C62828] to-[#8e1a1a] flex items-center justify-center text-white text-base disabled:opacity-40"
+          disabled={!input.trim() || sending}
+          className="w-10 h-10 rounded-full bg-gradient-to-br from-[#6A1B9A] to-[#3d1163] flex items-center justify-center text-white text-base disabled:opacity-40 flex-shrink-0 transition-opacity"
         >
-          ➤
+          {sending ? <span className="text-xs animate-pulse">…</span> : '➤'}
         </button>
       </div>
     </div>

@@ -21,6 +21,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
   const { user, accessToken } = useAuthStore();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
+  const [sending, setSending] = useState(false);
   const [convType, setConvType] = useState('PRIVE');
   const [convNom, setConvNom] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -46,7 +47,8 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     socket.emit('join:conversation', id);
 
     socket.on('new:message', (msg: Message) => {
-      setMessages(prev => [...prev, msg]);
+      // Déduplique si le message a déjà été ajouté après l'envoi REST
+      setMessages(prev => prev.some(m => m.id === msg.id) ? prev : [...prev, msg]);
     });
 
     return () => {
@@ -56,17 +58,19 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
   }, [id, accessToken]);
 
   const sendMessage = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || sending) return;
     const text = input;
     setInput('');
+    setSending(true);
     try {
-      if (accessToken) {
-        const socket = getSocket(accessToken);
-        socket.emit('send:message', { conversationId: id, contenu: text });
-      } else {
-        await messagingApi.send(id, text);
-      }
-    } catch { /* fallback */ }
+      const { data } = await messagingApi.send(id, text);
+      // Ajoute le message immédiatement (sans attendre le broadcast WS)
+      setMessages(prev => [...prev, data]);
+    } catch {
+      setInput(text);
+    } finally {
+      setSending(false);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -76,7 +80,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
   const header = CONV_TYPE_HEADER[convType] ?? CONV_TYPE_HEADER.PRIVE;
 
   return (
-    <div className="flex flex-col h-screen max-h-screen">
+    <div className="flex flex-col flex-1 overflow-hidden">
       <div className={`bg-gradient-to-r ${header.gradient} text-white px-4 py-2.5 flex items-center gap-2.5 flex-shrink-0`}>
         <button onClick={() => router.back()}
           className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center">‹</button>
@@ -141,10 +145,10 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
         <button className="w-10 h-10 rounded-full bg-[#f0f0f4] flex items-center justify-center text-lg">📷</button>
         <button
           onClick={sendMessage}
-          disabled={!input.trim()}
+          disabled={!input.trim() || sending}
           className="w-10 h-10 rounded-full bg-gradient-to-br from-[#C62828] to-[#8e1a1a] flex items-center justify-center text-white text-base disabled:opacity-40"
         >
-          ➤
+          {sending ? <span className="text-xs animate-pulse">…</span> : '➤'}
         </button>
       </div>
     </div>

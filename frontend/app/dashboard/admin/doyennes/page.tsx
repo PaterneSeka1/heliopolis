@@ -5,7 +5,7 @@ import { territoriesApi, usersApi } from '@/lib/api';
 import { Pill } from '@/components/ui';
 import type { District, User } from '@/types';
 
-export default function DoyennesPage() {
+export default function AdminDoyennesPage() {
   const [districts, setDistricts] = useState<District[]>([]);
   const [sentinelles, setSentinelles] = useState<User[]>([]);
   const [gardiens, setGardiens] = useState<User[]>([]);
@@ -120,7 +120,7 @@ export default function DoyennesPage() {
               </div>
 
               <Link
-                href={`/dashboard/region/paroisses?districtId=${district.id}`}
+                href={`/dashboard/admin/paroisses?districtId=${district.id}`}
                 className="mt-auto text-center text-xs border border-[#e6e6ea] text-[#1F1B2E] rounded-lg px-3 py-2 font-semibold hover:bg-[#f6f6fa] transition-colors">
                 Voir paroisses →
               </Link>

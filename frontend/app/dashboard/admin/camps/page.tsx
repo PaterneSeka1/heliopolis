@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { campsApi } from '@/lib/api';
 import { Card, Pill } from '@/components/ui';
 import type { Camp, CampStatus } from '@/types';
@@ -34,7 +33,6 @@ function formatDate(d?: string) {
 }
 
 export default function GestionCampsPage() {
-  const router = useRouter();
   const [camps, setCamps] = useState<Camp[]>([]);
   const [filtre, setFiltre] = useState<Filtre>('TOUS');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -56,22 +54,29 @@ export default function GestionCampsPage() {
   const filtered = filtre === 'TOUS' ? camps : camps.filter(c => c.statut === filtre);
 
   return (
-    <div className="flex flex-col flex-1 overflow-hidden">
-      <div className="bg-gradient-to-br from-[#6A1B9A] to-[#4a1370] text-white px-4 pt-4 pb-4 flex-shrink-0">
-        <button onClick={() => router.back()} className="text-sm opacity-80 mb-2">‹ Retour</button>
-        <h1 className="text-xl font-bold">⛺ Gestion des Camps</h1>
-        <p className="text-xs opacity-85 mt-0.5">{camps.length} camp{camps.length !== 1 ? 's' : ''} au total</p>
+    <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 lg:p-6">
+      <div className="flex justify-between items-center mb-5 border-b border-[#ececf0] pb-4">
+        <div>
+          <h1 className="text-xl lg:text-2xl font-black text-[#1F1B2E]">⛺ Gestion des Camps</h1>
+          <p className="text-xs text-[#6b6b78] mt-0.5">{camps.length} camp{camps.length !== 1 ? 's' : ''} au total</p>
+        </div>
+        <Link
+          href="/dashboard/admin/camps/nouveau"
+          className="bg-[#C62828] text-white font-bold text-sm px-4 py-2 rounded-xl hover:bg-[#b51d1d] transition-colors"
+        >
+          + Nouveau camp
+        </Link>
       </div>
 
-      <div className="px-4 pt-3 pb-2 flex gap-2 overflow-x-auto flex-shrink-0">
+      <div className="flex gap-2 mb-5 overflow-x-auto">
         {FILTRES.map(f => (
           <button
             key={f.key}
             onClick={() => setFiltre(f.key)}
-            className={`flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-colors ${
+            className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${
               filtre === f.key
-                ? 'bg-[#6A1B9A] text-white'
-                : 'bg-[#f0f0f4] text-[#6b6b78]'
+                ? 'bg-[#1F1B2E] text-white'
+                : 'bg-white border border-[#e0e0e8] text-[#6b6b78] hover:border-[#1F1B2E] hover:text-[#1F1B2E]'
             }`}
           >
             {f.label}
@@ -79,7 +84,7 @@ export default function GestionCampsPage() {
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 lg:px-8 pb-24">
+      <div>
         {filtered.length === 0 && (
           <div className="text-center py-12 text-[#6b6b78] text-sm">
             <div className="text-3xl mb-3">⛺</div>
@@ -130,13 +135,6 @@ export default function GestionCampsPage() {
         ))}
         </div>
       </div>
-
-      <Link
-        href="/dashboard/admin/camps/nouveau"
-        className="fixed bottom-20 lg:bottom-6 right-4 lg:right-8 bg-[#C62828] text-white font-bold text-sm px-5 py-3.5 rounded-full shadow-lg z-10"
-      >
-        + Nouveau camp
-      </Link>
     </div>
   );
 }

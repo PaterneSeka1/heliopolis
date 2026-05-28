@@ -1,7 +1,7 @@
 import type { User, UserRole } from '@/types';
 
 export const ROLE_HOME: Record<UserRole, string> = {
-  ADMIN: '/dashboard/admin',
+  ADMIN:  '/dashboard/admin',
   REGION: '/dashboard/region',
   SENTINELLE: '/dashboard/guide',
   GUIDE: '/dashboard/guide',

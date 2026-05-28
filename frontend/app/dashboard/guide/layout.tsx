@@ -5,7 +5,6 @@ import { AuthGuard } from '@/components/layout/AuthGuard';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { LogoutButton } from '@/components/auth/LogoutButton';
 import { useAuthStore } from '@/store/auth';
-import { isManagementRole } from '@/lib/roles';
 
 const NAV_BASE = [
   { href: '/dashboard/guide',           icon: '📖', label: 'Accueil' },
@@ -18,17 +17,10 @@ export default function GuideLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const { user } = useAuthStore();
 
-  const nav = [
-    ...NAV_BASE,
-    ...(user?.role === 'ADMIN' || user?.role === 'REGION'
-      ? [{ href: '/dashboard/region', icon: '📊', label: 'Vue régionale' }]
-      : user?.role === 'SENTINELLE'
-        ? [{ href: '/dashboard/admin/export', icon: '📤', label: 'Export' }]
-        : []),
-  ];
+  const nav = NAV_BASE;
 
   return (
-    <AuthGuard roles={['GUIDE', 'SENTINELLE', 'REGION', 'ADMIN']}>
+    <AuthGuard roles={['GUIDE', 'SENTINELLE']}>
       <div className="flex h-screen overflow-hidden bg-[#fafafa]">
 
         {/* ── Sidebar desktop ── */}

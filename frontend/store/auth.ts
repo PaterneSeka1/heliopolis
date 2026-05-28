@@ -19,7 +19,16 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       accessToken: null,
       isGuest: false,
-      setUser: (user) => set({ user }),
+      setUser: (user) => {
+        if (typeof document !== 'undefined') {
+          if (user?.role) {
+            document.cookie = `user_role=${user.role}; path=/; max-age=86400; SameSite=Lax`;
+          } else {
+            document.cookie = 'user_role=; path=/; max-age=0; SameSite=Lax';
+          }
+        }
+        set({ user });
+      },
       setTokens: (accessToken, refreshToken) => {
         if (typeof window !== 'undefined') {
           localStorage.setItem('access_token', accessToken);
@@ -32,6 +41,7 @@ export const useAuthStore = create<AuthState>()(
         if (typeof window !== 'undefined') {
           localStorage.removeItem('access_token');
           localStorage.removeItem('refresh_token');
+          document.cookie = 'user_role=; path=/; max-age=0; SameSite=Lax';
         }
         set({ user: null, accessToken: null, isGuest: false });
       },

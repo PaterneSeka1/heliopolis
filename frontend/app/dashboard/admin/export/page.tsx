@@ -1,12 +1,10 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { campsApi, exportApi } from '@/lib/api';
 import { Select, InfoBanner } from '@/components/ui';
 import type { Camp, CampParticipant } from '@/types';
 
 export default function ExportPage() {
-  const router = useRouter();
   const [camps, setCamps] = useState<Camp[]>([]);
   const [campId, setCampId] = useState('');
   const [participants, setParticipants] = useState<CampParticipant[]>([]);
@@ -63,14 +61,15 @@ export default function ExportPage() {
   };
 
   return (
-    <div className="flex flex-col flex-1 overflow-hidden">
-      <div className="bg-gradient-to-br from-[#6A1B9A] to-[#4a1370] text-white px-4 pt-4 pb-4 flex-shrink-0">
-        <button onClick={() => router.back()} className="text-sm opacity-80 mb-2">‹ Retour</button>
-        <h1 className="text-xl font-bold">Export Excel</h1>
-        <p className="text-xs opacity-85 mt-0.5">Liste des participants par camp</p>
+    <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 lg:p-6">
+      <div className="flex justify-between items-center mb-5 border-b border-[#ececf0] pb-4">
+        <div>
+          <h1 className="text-xl lg:text-2xl font-black text-[#1F1B2E]">📤 Export Excel</h1>
+          <p className="text-xs text-[#6b6b78] mt-0.5">Liste des participants par camp</p>
+        </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-8">
+      <div>
         <div className="lg:max-w-3xl lg:mx-auto">
         <InfoBanner icon="📋">
           L&apos;export est <strong>limité à ton périmètre</strong>. Aucun montant de cotisation n&apos;est exporté.

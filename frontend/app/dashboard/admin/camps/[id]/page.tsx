@@ -54,22 +54,19 @@ export default function AdminCampDetailPage({ params }: { params: Promise<{ id: 
   const confirmes = participants.filter(p => p.participationStatus === 'CONFIRME').length;
 
   return (
-    <div className="flex flex-col flex-1 overflow-hidden">
-      {/* Header */}
-      <div className="bg-gradient-to-br from-[#6A1B9A] to-[#4a1370] text-white px-4 lg:px-8 pt-4 pb-4 flex-shrink-0">
-        <Link href="/dashboard/admin/camps" className="text-sm opacity-80 mb-2 inline-block">‹ Camps</Link>
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-bold">{camp.nom}</h1>
-            <p className="text-xs opacity-80 mt-0.5">{camp.lieu} · {camp.type}</p>
-          </div>
-          <span className={`text-xs font-bold px-3 py-1.5 rounded-full flex-shrink-0 ${
-            STATUTS.find(s => s.value === camp.statut)?.color ?? ''
-          }`}>{STATUTS.find(s => s.value === camp.statut)?.label ?? camp.statut}</span>
+    <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 lg:p-6">
+      <div className="flex justify-between items-start mb-5 border-b border-[#ececf0] pb-4">
+        <div>
+          <Link href="/dashboard/admin/camps" className="text-xs text-[#6b6b78] hover:text-[#1F1B2E] mb-1 inline-block">‹ Camps</Link>
+          <h1 className="text-xl lg:text-2xl font-black text-[#1F1B2E]">{camp.nom}</h1>
+          <p className="text-xs text-[#6b6b78] mt-0.5">{camp.lieu} · {camp.type}</p>
         </div>
+        <span className={`text-xs font-bold px-3 py-1.5 rounded-full flex-shrink-0 ${
+          STATUTS.find(s => s.value === camp.statut)?.color ?? ''
+        }`}>{STATUTS.find(s => s.value === camp.statut)?.label ?? camp.statut}</span>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 lg:p-8">
+      <div>
         <div className="lg:grid lg:grid-cols-2 lg:gap-8 lg:max-w-5xl">
 
           {/* Colonne gauche */}
@@ -174,7 +171,7 @@ export default function AdminCampDetailPage({ params }: { params: Promise<{ id: 
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-semibold text-[#1F1B2E] truncate">{p.user.prenoms} {p.user.nom}</div>
-                      <div className="text-[11px] text-[#6b6b78]">{p.parish.nom}</div>
+                      <div className="text-[11px] text-[#6b6b78]">{p.parish?.nom ?? '—'}</div>
                     </div>
                     <Pill variant={p.adhesionStatusSnapshot === 'A_JOUR' ? 'vert' : 'or'} className="text-[10px]">
                       {p.adhesionStatusSnapshot === 'A_JOUR' ? 'À jour' : 'En attente'}
@@ -185,8 +182,8 @@ export default function AdminCampDetailPage({ params }: { params: Promise<{ id: 
             )}
 
             <Link
-              href="/dashboard/region/participants"
-              className="block w-full text-center bg-[#6A1B9A] text-white font-bold text-sm py-3 rounded-xl mt-3"
+              href="/dashboard/admin/participants"
+              className="block w-full text-center bg-[#1F1B2E] text-white font-bold text-sm py-3 rounded-xl mt-3 hover:bg-[#2d2640] transition-colors"
             >
               📊 Vue complète participants →
             </Link>
@@ -196,3 +193,4 @@ export default function AdminCampDetailPage({ params }: { params: Promise<{ id: 
     </div>
   );
 }
+

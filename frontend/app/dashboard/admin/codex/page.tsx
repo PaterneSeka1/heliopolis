@@ -35,24 +35,24 @@ export default function AdminCodexPage() {
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
-      <div className="bg-gradient-to-br from-[#1F1B2E] to-[#2c1f4a] text-white px-4 pt-4 pb-0 flex-shrink-0">
+      <div className="bg-white border-b border-[#ececf0] px-4 pt-4 pb-0 flex-shrink-0">
         <div className="flex items-center gap-2 mb-3">
-          <h1 className="text-xl font-bold flex-1">🪶 Mur du Codex</h1>
+          <h1 className="text-xl lg:text-2xl font-black text-[#1F1B2E] flex-1">🪶 Mur du Codex</h1>
           {pending.length > 0 && (
             <span className="bg-[#C62828] text-white text-xs font-bold px-2 py-0.5 rounded-full">
               {pending.length} à modérer
             </span>
           )}
         </div>
-        <div className="flex border-b border-white/20">
+        <div className="flex">
           {([
             { value: 'attente', label: `⏳ À modérer (${pending.length})` },
             { value: 'publies', label: '✓ Publiés' },
           ] as { value: Tab; label: string }[]).map(t => (
             <button key={t.value} onClick={() => setTab(t.value)}
-              className={`flex-1 py-2.5 text-xs font-bold uppercase tracking-wider relative ${tab === t.value ? 'text-white' : 'text-white/50'}`}>
+              className={`flex-1 py-2.5 text-xs font-bold uppercase tracking-wider relative ${tab === t.value ? 'text-[#1F1B2E]' : 'text-[#6b6b78]'}`}>
               {t.label}
-              {tab === t.value && <span className="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-white rounded-t-full" />}
+              {tab === t.value && <span className="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-[#C62828] rounded-t-full" />}
             </button>
           ))}
         </div>

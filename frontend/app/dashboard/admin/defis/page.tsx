@@ -30,7 +30,7 @@ function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-export default function DefisPage() {
+export default function AdminDefisPage() {
   const [pending, setPending] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabFilter>('TOUTES');
@@ -60,7 +60,7 @@ export default function DefisPage() {
   const handleReject = async (id: string) => {
     setActionLoading(id + '-reject');
     try {
-      await codexApi.reject(id, 'Rejeté par le responsable régional');
+      await codexApi.reject(id, 'Rejeté par l\'administrateur');
       await fetchPending();
     } catch { /* ignore */ }
     finally { setActionLoading(null); }
