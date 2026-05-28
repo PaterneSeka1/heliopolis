@@ -81,7 +81,7 @@ export default function SelectionPage({ params }: { params: Promise<{ campId: st
         </p>
       </div>
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-8">
         <InfoBanner icon="💡">
           Tu peux sélectionner même les routiers <strong>non à jour</strong> d&apos;adhésion (règle 5.4).
         </InfoBanner>
@@ -98,6 +98,7 @@ export default function SelectionPage({ params }: { params: Promise<{ campId: st
           <Pill variant="gris">Sélectionnés ({selected.size})</Pill>
         </div>
 
+        <div className="lg:grid lg:grid-cols-2 lg:gap-3">
         {filtered.map(r => {
           const adhesion = r.adhesions?.[0]?.statut ?? 'NON_A_JOUR';
           const pillProps = STATUS_PILL[adhesion] ?? STATUS_PILL.NON_A_JOUR;
@@ -127,6 +128,8 @@ export default function SelectionPage({ params }: { params: Promise<{ campId: st
             </div>
           );
         })}
+
+        </div>
 
         {filtered.length === 0 && !search && (
           <div className="text-center py-8 text-[#6b6b78] text-sm">

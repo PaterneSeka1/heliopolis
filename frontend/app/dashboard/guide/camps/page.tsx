@@ -23,7 +23,7 @@ export default function GuideCampsPage() {
         <p className="text-xs opacity-85 mt-0.5">Sélectionne les participants</p>
       </div>
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-8">
         {loading && (
           <div className="flex flex-col items-center justify-center py-12 text-[#6b6b78] text-sm">
             <div className="text-3xl mb-3 animate-pulse">⛺</div>
@@ -41,6 +41,7 @@ export default function GuideCampsPage() {
           </div>
         )}
 
+        <div className="grid lg:grid-cols-2 xl:grid-cols-3 gap-4">
         {camps.map(camp => (
           <div key={camp.id} className="mb-4">
             <CampCard camp={camp} href={`/dashboard/guide/camps/${camp.id}`} />
@@ -52,6 +53,7 @@ export default function GuideCampsPage() {
             </Link>
           </div>
         ))}
+        </div>
 
         <div className="h-4" />
       </div>

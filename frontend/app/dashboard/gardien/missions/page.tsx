@@ -68,7 +68,7 @@ export default function MissionsPage() {
         <p className="text-xs opacity-85 mt-0.5">Défis des Gardiens</p>
       </div>
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-8">
         <div className="flex gap-2 overflow-x-auto pb-1 mb-4">
           {FILTERS.map(f => (
             <button
@@ -87,6 +87,7 @@ export default function MissionsPage() {
 
         {loading && <div className="text-center py-10 text-[#6b6b78] text-sm">Chargement…</div>}
 
+        <div className="grid lg:grid-cols-2 gap-4">
         {filtered.map(c => {
           const cat = c.categorie as ChallengeCategory;
           const style = CAT_COLORS[cat];
@@ -132,6 +133,7 @@ export default function MissionsPage() {
             </div>
           );
         })}
+        </div>
 
         {!loading && filtered.length === 0 && (
           <div className="text-center py-10 text-[#6b6b78] text-sm">

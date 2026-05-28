@@ -35,9 +35,9 @@ export default function ArtefactsPage() {
         </p>
       </div>
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-8">
         {latestBadge && (
-          <Card className="bg-gradient-to-r from-[#fff7e0] to-white border-[#f0d98a] text-center mb-4">
+          <Card className="bg-gradient-to-r from-[#fff7e0] to-white border-[#f0d98a] text-center mb-4 lg:max-w-sm lg:mx-auto">
             <div className="text-4xl">{BADGE_LEVEL_EMOJI[latestBadge.badge.niveau]}</div>
             <div className="font-bold mt-2 text-[#1F1B2E]">{latestBadge.badge.nom}</div>
             <div className="text-xs text-[#6b6b78] mt-1">
@@ -48,7 +48,7 @@ export default function ArtefactsPage() {
 
         <SectionTitle>Tous les artefacts</SectionTitle>
 
-        <div className="grid grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5">
           {allBadges.map(b => ({
             nom: b.nom, emoji: BADGE_LEVEL_EMOJI[b.niveau] || '🏅',
             niveau: b.niveau, locked: !ownedIds.has(b.id), id: b.id,

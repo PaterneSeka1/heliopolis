@@ -58,7 +58,7 @@ export default function AdminCodexPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto bg-[#f5eed8] p-4">
+      <div className="flex-1 overflow-y-auto bg-[#f5eed8] p-4 lg:p-8">
         {loading && (
           <div className="text-center py-10 text-sm text-[#6b6b78]">
             <div className="text-3xl mb-2 animate-pulse">🪶</div>
@@ -73,7 +73,8 @@ export default function AdminCodexPage() {
               <p>Aucune soumission en attente.</p>
             </div>
           ) : (
-            pending.map(sub => (
+            <div className="lg:grid lg:grid-cols-2 lg:gap-4">
+            {pending.map(sub => (
               <Card key={sub.id} className="mb-3">
                 <div className="flex items-start gap-2.5 mb-2">
                   <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#6A1B9A] to-[#C62828] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
@@ -99,7 +100,8 @@ export default function AdminCodexPage() {
                   </button>
                 </div>
               </Card>
-            ))
+            ))}
+            </div>
           )
         )}
 

@@ -65,8 +65,8 @@ export default function DashboardGuidePage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4">
-        <div className="grid grid-cols-2 gap-2.5 mb-4">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 mb-4">
           <Stat value={routiers.length} label="Gardiens" variant="violet" />
           <Stat value={aJour} label="À jour 2026" variant="vert" />
           <Stat value={camps.length} label="Camps ouverts" variant="or" />
@@ -75,6 +75,8 @@ export default function DashboardGuidePage() {
 
         <SectionTitle>Actions du jour</SectionTitle>
 
+        <div className="lg:grid lg:grid-cols-2 lg:gap-6">
+        <div>
         {nonAJour > 0 && (
           <Card className="mb-2.5">
             <div className="flex items-center gap-3">
@@ -117,7 +119,9 @@ export default function DashboardGuidePage() {
             </div>
           </Card>
         )}
+        </div>
 
+        <div>
         {camps.length > 0 && (
           <>
             <SectionTitle>Camps ouverts</SectionTitle>
@@ -168,6 +172,8 @@ export default function DashboardGuidePage() {
             })}
           </>
         )}
+        </div>
+        </div>
 
         {canExport ? (
           <Link

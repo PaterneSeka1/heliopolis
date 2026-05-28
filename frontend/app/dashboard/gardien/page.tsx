@@ -98,94 +98,102 @@ export default function DashboardGardienPage() {
       </div>
 
       {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 bg-[#fafafa]">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-8 bg-[#fafafa]">
 
-        {/* Progression */}
-        <SectionTitle>Ma progression</SectionTitle>
-        <Card className="mb-4">
-          <div className="flex justify-between items-end mb-2">
-            <div>
-              <div className="text-2xl font-black text-[#D9A441]">{validated} / {total}</div>
-              <div className="text-xs text-[#6b6b78]">défis validés</div>
-            </div>
-            {latestBadge && (
-              <Pill variant="or">{BADGE_EMOJI[latestBadge.badge.niveau]} {latestBadge.badge.nom}</Pill>
+        <div className="lg:grid lg:grid-cols-2 lg:gap-6">
+          {/* Colonne gauche : Progression + Missions */}
+          <div>
+            {/* Progression */}
+            <SectionTitle>Ma progression</SectionTitle>
+            <Card className="mb-4">
+              <div className="flex justify-between items-end mb-2">
+                <div>
+                  <div className="text-2xl font-black text-[#D9A441]">{validated} / {total}</div>
+                  <div className="text-xs text-[#6b6b78]">défis validés</div>
+                </div>
+                {latestBadge && (
+                  <Pill variant="or">{BADGE_EMOJI[latestBadge.badge.niveau]} {latestBadge.badge.nom}</Pill>
+                )}
+              </div>
+              <Progress value={validated} max={total} />
+              {nextBadge ? (
+                <p className="text-[11px] text-[#6b6b78] mt-2">
+                  Prochain artefact : {nextBadge.nom}
+                </p>
+              ) : (
+                <p className="text-[11px] text-[#6b6b78] mt-2">
+                  Tous les artefacts disponibles sont débloqués.
+                </p>
+              )}
+            </Card>
+
+            {/* Missions en cours */}
+            <SectionTitle>Missions en cours</SectionTitle>
+            {pendingSubmissions.slice(0, 3).map(sub => (
+              <Card key={sub.id} className="mb-2.5 border-l-4 border-l-[#D9A441]">
+                <h4 className="font-bold text-sm text-[#1F1B2E] mb-1">{sub.challenge.titre}</h4>
+                <p className="text-xs text-[#6b6b78]">En attente de validation</p>
+                <div className="flex justify-between items-center mt-2">
+                  <Pill variant="or">{CATEGORY_LABELS[sub.challenge.categorie as ChallengeCategory]}</Pill>
+                  <span className="text-xs font-bold text-[#9c7218]">+{sub.challenge.points} pts</span>
+                </div>
+              </Card>
+            ))}
+
+            {pendingSubmissions.length === 0 && (
+              <Card className="text-center py-6 text-sm text-[#6b6b78]">
+                <div className="text-3xl mb-2">🎯</div>
+                <p>Aucune mission en cours.</p>
+                <p className="text-xs mt-1">Explore les défis pour commencer ta Route !</p>
+              </Card>
+            )}
+
+            <Link href="/dashboard/gardien/missions" className="block w-full text-center bg-[#C62828] text-white font-bold text-sm py-3.5 rounded-xl mt-3">
+              Voir toutes mes missions →
+            </Link>
+          </div>
+
+          {/* Colonne droite : Messages récents */}
+          <div>
+            {/* Messages récents */}
+            {conversations.length > 0 && (
+              <>
+                <SectionTitle action={<Link href="/dashboard/gardien/messages" className="text-xs text-[#C62828] font-semibold">Tout voir →</Link>}>
+                  Messages récents
+                </SectionTitle>
+                {conversations.slice(0, 3).map(conv => {
+                  const lastMsg = conv.messages?.[0];
+                  const ICON: Record<string, string> = { COMMUNAUTE: '🌍', REGION: '🗺️', DOYENNE: '🛡️', PAROISSE: '⛪', PRIVE: '🤝', GROUPE: '👥' };
+                  const timeStr = conv.lastMessageAt
+                    ? new Date(conv.lastMessageAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+                    : '';
+                  return (
+                    <Link key={conv.id} href={`/dashboard/gardien/messages/${conv.id}`}>
+                      <Card className="mb-2.5 flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#6A1B9A] to-[#3d1163] flex items-center justify-center text-base text-white flex-shrink-0">
+                          {ICON[conv.type] ?? '💬'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between items-center gap-1">
+                            <span className="font-semibold text-xs text-[#1F1B2E] truncate">{conv.nom ?? 'Conversation'}</span>
+                            {timeStr && <span className="text-[10px] text-[#6b6b78] flex-shrink-0">{timeStr}</span>}
+                          </div>
+                          <p className="text-[11px] text-[#6b6b78] truncate mt-0.5">{lastMsg?.contenu ?? 'Aucun message'}</p>
+                        </div>
+                      </Card>
+                    </Link>
+                  );
+                })}
+              </>
             )}
           </div>
-          <Progress value={validated} max={total} />
-          {nextBadge ? (
-            <p className="text-[11px] text-[#6b6b78] mt-2">
-              Prochain artefact : {nextBadge.nom}
-            </p>
-          ) : (
-            <p className="text-[11px] text-[#6b6b78] mt-2">
-              Tous les artefacts disponibles sont débloqués.
-            </p>
-          )}
-        </Card>
+        </div>
 
-        {/* Prochain camp */}
+        {/* Prochain camp — pleine largeur */}
         {camp && (
           <>
             <SectionTitle>Mon prochain camp</SectionTitle>
             <CampCard camp={camp} href={`/dashboard/gardien/camps/${camp.id}`} />
-          </>
-        )}
-
-        {/* Missions en cours */}
-        <SectionTitle>Missions en cours</SectionTitle>
-        {pendingSubmissions.slice(0, 3).map(sub => (
-          <Card key={sub.id} className="mb-2.5 border-l-4 border-l-[#D9A441]">
-            <h4 className="font-bold text-sm text-[#1F1B2E] mb-1">{sub.challenge.titre}</h4>
-            <p className="text-xs text-[#6b6b78]">En attente de validation</p>
-            <div className="flex justify-between items-center mt-2">
-              <Pill variant="or">{CATEGORY_LABELS[sub.challenge.categorie as ChallengeCategory]}</Pill>
-              <span className="text-xs font-bold text-[#9c7218]">+{sub.challenge.points} pts</span>
-            </div>
-          </Card>
-        ))}
-
-        {pendingSubmissions.length === 0 && (
-          <Card className="text-center py-6 text-sm text-[#6b6b78]">
-            <div className="text-3xl mb-2">🎯</div>
-            <p>Aucune mission en cours.</p>
-            <p className="text-xs mt-1">Explore les défis pour commencer ta Route !</p>
-          </Card>
-        )}
-
-        <Link href="/dashboard/gardien/missions" className="block w-full text-center bg-[#C62828] text-white font-bold text-sm py-3.5 rounded-xl mt-3">
-          Voir toutes mes missions →
-        </Link>
-
-        {/* Messages récents */}
-        {conversations.length > 0 && (
-          <>
-            <SectionTitle action={<Link href="/dashboard/gardien/messages" className="text-xs text-[#C62828] font-semibold">Tout voir →</Link>}>
-              Messages récents
-            </SectionTitle>
-            {conversations.slice(0, 3).map(conv => {
-              const lastMsg = conv.messages?.[0];
-              const ICON: Record<string, string> = { COMMUNAUTE: '🌍', REGION: '🗺️', DOYENNE: '🛡️', PAROISSE: '⛪', PRIVE: '🤝', GROUPE: '👥' };
-              const timeStr = conv.lastMessageAt
-                ? new Date(conv.lastMessageAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-                : '';
-              return (
-                <Link key={conv.id} href={`/dashboard/gardien/messages/${conv.id}`}>
-                  <Card className="mb-2.5 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#6A1B9A] to-[#3d1163] flex items-center justify-center text-base text-white flex-shrink-0">
-                      {ICON[conv.type] ?? '💬'}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex justify-between items-center gap-1">
-                        <span className="font-semibold text-xs text-[#1F1B2E] truncate">{conv.nom ?? 'Conversation'}</span>
-                        {timeStr && <span className="text-[10px] text-[#6b6b78] flex-shrink-0">{timeStr}</span>}
-                      </div>
-                      <p className="text-[11px] text-[#6b6b78] truncate mt-0.5">{lastMsg?.contenu ?? 'Aucun message'}</p>
-                    </div>
-                  </Card>
-                </Link>
-              );
-            })}
           </>
         )}
       </div>

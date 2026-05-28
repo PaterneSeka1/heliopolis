@@ -111,9 +111,9 @@ export default function GardienCampDetailPage({ params }: { params: Promise<{ id
         </div>
       </div>
 
-      <div className="p-4">
+      <div className="p-4 lg:p-8 lg:max-w-3xl lg:mx-auto">
         {/* Meta stats */}
-        <div className="grid grid-cols-2 gap-2.5 mb-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 mb-4">
           <div className="bg-white rounded-2xl p-3.5 border border-[#ececf0]">
             <div className="text-sm font-medium text-[#1F1B2E]">📅 {dateStr}</div>
             <div className="text-[11px] text-[#6b6b78] uppercase tracking-wide mt-0.5">Période</div>

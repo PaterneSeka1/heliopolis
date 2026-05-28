@@ -65,7 +65,8 @@ export default function NouveauCampPage() {
         <p className="text-xs opacity-85 mt-0.5">Étape {step} / 2</p>
       </div>
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-8">
+        <div className="lg:max-w-2xl lg:mx-auto">
         <div className="flex gap-1.5 mb-5">
           {[1, 2].map(n => (
             <div key={n} className={`flex-1 h-1.5 rounded-full ${n <= step ? 'bg-[#C62828]' : 'bg-[#e6e6ea]'}`} />
@@ -136,6 +137,7 @@ export default function NouveauCampPage() {
             </div>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

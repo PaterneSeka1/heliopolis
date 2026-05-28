@@ -49,14 +49,16 @@ export default function DashboardAdminPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4">
-        <div className="grid grid-cols-2 gap-2.5 mb-4">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 mb-4">
           <Stat value={camps.length} label="Camps" variant="violet" />
           <Stat value={camps.filter(c => c.statut === 'OUVERT').length} label="Ouverts" variant="rouge" />
           <Stat value={stats?.totalGardiens ?? '—'} label="Gardiens" variant="or" />
           <Stat value={stats?.doyennes ?? '—'} label="Doyennés" variant="vert" />
         </div>
 
+        <div className="lg:grid lg:grid-cols-2 lg:gap-6">
+        <div>
         <SectionTitle action={<Link href="/dashboard/admin/camps/nouveau" className="text-xs text-[#C62828] font-semibold">+ Nouveau →</Link>}>
           Camps actifs
         </SectionTitle>
@@ -81,6 +83,8 @@ export default function DashboardAdminPage() {
           </Link>
         ))}
 
+        </div>
+        <div>
         {pending.length > 0 && (
           <>
             <SectionTitle action={<Link href="/dashboard/admin/codex" className="text-xs text-[#C62828] font-semibold">Tout voir →</Link>}>
@@ -139,8 +143,11 @@ export default function DashboardAdminPage() {
           </>
         )}
 
+        </div>
+        </div>
+
         <SectionTitle>Accès rapide</SectionTitle>
-        <div className="grid grid-cols-3 gap-2 mb-4">
+        <div className="grid grid-cols-3 lg:grid-cols-6 gap-2 mb-4">
           {[
             { icon: '⛺', label: 'Camps', href: '/dashboard/admin/camps', color: '#D9A441' },
             { icon: '🪶', label: 'Codex', href: '/dashboard/admin/codex', color: '#6A1B9A' },

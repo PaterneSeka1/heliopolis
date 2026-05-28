@@ -36,7 +36,7 @@ export default function GardienCampsPage() {
         <p className="text-xs opacity-85 mt-0.5">Camps des Gardiens de la Création</p>
       </div>
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 bg-[#fafafa]">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-8 bg-[#fafafa]">
         {/* Bannière info */}
         <div className="flex gap-2 items-start bg-[#e8f5e9] border border-[#2E7D32]/30 rounded-xl p-3 mb-4 text-xs text-[#1F1B2E]">
           <span className="text-base flex-shrink-0">ℹ️</span>
@@ -69,9 +69,11 @@ export default function GardienCampsPage() {
           <div className="text-center py-10 text-[#6b6b78] text-sm">Chargement…</div>
         )}
 
-        {filtered.map(camp => (
-          <CampCard key={camp.id} camp={camp} href={`/dashboard/gardien/camps/${camp.id}`} />
-        ))}
+        <div className="grid lg:grid-cols-2 xl:grid-cols-3 gap-4">
+          {filtered.map(camp => (
+            <CampCard key={camp.id} camp={camp} href={`/dashboard/gardien/camps/${camp.id}`} />
+          ))}
+        </div>
 
         {!loading && filtered.length === 0 && (
           <div className="text-center py-10 text-[#6b6b78] text-sm">

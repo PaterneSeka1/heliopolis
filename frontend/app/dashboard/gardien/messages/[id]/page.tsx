@@ -88,7 +88,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden bg-[#f6f4f0] px-4 py-3 flex flex-col gap-2">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden bg-[#f6f4f0] px-4 py-3 flex flex-col gap-2 lg:max-w-4xl lg:mx-auto lg:w-full">
         {convType === 'PRIVE' && (
           <div className="self-center text-[10px] text-[#6b6b78] bg-[#6A1B9A]/10 px-4 py-1.5 rounded-full">
             🔒 Conversation chiffrée de bout en bout
@@ -129,7 +129,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
         <div ref={bottomRef} />
       </div>
 
-      <div className="flex-shrink-0 bg-white border-t border-[#e6e6ea] px-2.5 py-2 flex items-center gap-1.5 pb-safe">
+      <div className="flex-shrink-0 bg-white border-t border-[#e6e6ea] px-2.5 py-2 flex items-center gap-1.5 pb-safe lg:max-w-4xl lg:mx-auto lg:w-full">
         <button className="w-10 h-10 rounded-full bg-[#f0f0f4] flex items-center justify-center text-lg text-[#6A1B9A]">😊</button>
         <input
           className="flex-1 bg-[#f6f6fa] border border-[#ececf0] rounded-full px-4 py-2.5 text-sm outline-none"

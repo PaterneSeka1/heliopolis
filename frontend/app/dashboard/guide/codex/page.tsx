@@ -51,7 +51,7 @@ export default function GuideCodexPage() {
         <p className="text-xs opacity-85 mt-0.5">Modération et publications des Gardiens</p>
       </div>
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 bg-[#f5eed8]">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-8 bg-[#f5eed8]">
         {loading && (
           <div className="flex flex-col items-center justify-center py-12 text-[#6b6b78] text-sm">
             <div className="text-3xl mb-3 animate-pulse">🪶</div>
@@ -62,6 +62,7 @@ export default function GuideCodexPage() {
         {!loading && pending.length > 0 && (
           <>
             <SectionTitle>À modérer ({pending.length})</SectionTitle>
+            <div className="lg:grid lg:grid-cols-2 lg:gap-4">
             {pending.map(sub => (
               <div key={sub.id} className="bg-white rounded-2xl border border-[#ececf0] p-3.5 mb-3 shadow-sm">
                 <div className="flex items-start gap-3 mb-3">
@@ -101,6 +102,7 @@ export default function GuideCodexPage() {
                 </div>
               </div>
             ))}
+            </div>
           </>
         )}
 

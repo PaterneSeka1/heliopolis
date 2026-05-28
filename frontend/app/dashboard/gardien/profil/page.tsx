@@ -45,7 +45,8 @@ export default function GardienProfilPage() {
         <p className="text-xs opacity-85 mt-0.5">Gardien de la Création</p>
       </div>
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 bg-[#fafafa]">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-8 bg-[#fafafa]">
+        <div className="lg:max-w-2xl lg:mx-auto">
         {/* Card identité */}
         <Card className="mb-4">
           <div className="flex items-center gap-3.5">
@@ -119,6 +120,7 @@ export default function GardienProfilPage() {
         <LogoutButton className="block w-full text-center bg-white border border-[#e6e6ea] text-[#6b6b78] font-semibold text-sm py-3.5 rounded-xl">
           Se déconnecter
         </LogoutButton>
+        </div>
       </div>
     </div>
   );

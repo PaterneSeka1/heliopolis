@@ -88,8 +88,8 @@ function MessagesTab() {
 
   return (
     <div className="flex-1 overflow-y-auto overflow-x-hidden bg-[#f7f7fb]">
-      <div className="px-4 pt-3 pb-2">
-        <div className="relative">
+      <div className="px-4 lg:px-8 pt-3 pb-2">
+        <div className="relative lg:max-w-lg">
           <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-[#6b6b78]">🔍</span>
           <input
             className="w-full pl-9 pr-3.5 py-2.5 bg-white border border-[#e6e6ea] rounded-xl text-sm outline-none focus:border-[#6A1B9A] transition-colors"
@@ -241,8 +241,8 @@ function ContactsTab() {
 
   return (
     <div className="flex-1 overflow-y-auto overflow-x-hidden bg-[#f7f7fb]">
-      <div className="px-4 pt-3 pb-2">
-        <div className="relative">
+      <div className="px-4 lg:px-8 pt-3 pb-2">
+        <div className="relative lg:max-w-lg">
           <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-[#6b6b78]">🔍</span>
           <input
             className="w-full pl-9 pr-3.5 py-2.5 bg-white border border-[#e6e6ea] rounded-xl text-sm outline-none focus:border-[#6A1B9A] transition-colors"
@@ -401,9 +401,11 @@ function ContactsTab() {
 
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="px-4 mt-3">
+    <div className="px-4 lg:px-8 mt-3">
       <SectionLabel>{label}</SectionLabel>
-      {children}
+      <div className="lg:grid lg:grid-cols-2 lg:gap-3">
+        {children}
+      </div>
     </div>
   );
 }

@@ -1,13 +1,75 @@
 'use client';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { BottomNav } from '@/components/layout/BottomNav';
+import { LogoutButton } from '@/components/auth/LogoutButton';
+import { useAuthStore } from '@/store/auth';
+
+const NAV = [
+  { href: '/dashboard/gardien',            icon: '🤝', label: 'Accueil' },
+  { href: '/dashboard/gardien/camps',      icon: '⛺', label: 'Camps' },
+  { href: '/dashboard/gardien/missions',   icon: '🎯', label: 'Missions' },
+  { href: '/dashboard/gardien/messages',   icon: '💬', label: 'Messages' },
+  { href: '/dashboard/gardien/codex',      icon: '🪶', label: 'Codex' },
+  { href: '/dashboard/gardien/artefacts',  icon: '🏅', label: 'Artefacts' },
+  { href: '/dashboard/gardien/profil',     icon: '👤', label: 'Profil' },
+];
 
 export default function GardienLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const { user } = useAuthStore();
+
   return (
     <AuthGuard roles={['GARDIEN']}>
-      <div className="flex flex-col h-screen max-w-md mx-auto overflow-hidden">
-        <main className="flex-1 flex flex-col overflow-hidden">{children}</main>
-        <BottomNav variant="gardien" />
+      <div className="flex h-screen overflow-hidden bg-[#fafafa]">
+
+        {/* ── Sidebar desktop ── */}
+        <aside className="hidden lg:flex lg:flex-col w-56 bg-gradient-to-b from-[#C62828] to-[#8e1a1a] text-white flex-shrink-0">
+          <div className="p-4 border-b border-white/20 flex-shrink-0">
+            <div className="text-base font-bold">🛡️ Gardien</div>
+            <div className="text-[11px] opacity-75 mt-0.5">{user?.parish?.nom ?? 'Ma paroisse'}</div>
+          </div>
+
+          <nav className="flex-1 p-2 overflow-y-auto">
+            {NAV.map(item => {
+              const active = item.href === '/dashboard/gardien'
+                ? pathname === item.href
+                : pathname.startsWith(item.href);
+              return (
+                <Link key={item.href} href={item.href}
+                  className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm mb-0.5 transition-colors ${
+                    active ? 'bg-white/20 font-semibold text-white' : 'text-white/75 hover:bg-white/10 hover:text-white'
+                  }`}>
+                  <span className="text-base w-5 text-center">{item.icon}</span>
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
+
+          <div className="p-3 border-t border-white/20 flex-shrink-0">
+            <div className="flex items-center gap-2 px-2">
+              <div className="w-7 h-7 rounded-full bg-white/25 flex items-center justify-center text-[11px] font-bold flex-shrink-0">
+                {user ? `${user.nom[0]}${user.prenoms[0]}` : '?'}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-semibold truncate">{user?.prenoms} {user?.nom}</div>
+                <div className="text-[10px] opacity-60">{user?.matricule}</div>
+              </div>
+              <LogoutButton className="text-white/60 hover:text-white transition-colors" />
+            </div>
+          </div>
+        </aside>
+
+        {/* ── Contenu principal ── */}
+        <div className="flex flex-col flex-1 overflow-hidden min-w-0">
+          <main className="flex-1 flex flex-col overflow-hidden">{children}</main>
+          {/* BottomNav mobile uniquement */}
+          <div className="lg:hidden flex-shrink-0">
+            <BottomNav variant="gardien" />
+          </div>
+        </div>
       </div>
     </AuthGuard>
   );

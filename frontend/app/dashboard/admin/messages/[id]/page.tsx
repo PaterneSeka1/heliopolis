@@ -88,7 +88,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden bg-[#f6f4f0] px-4 py-3 flex flex-col gap-2">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden bg-[#f6f4f0] px-4 py-3 flex flex-col gap-2 lg:max-w-4xl lg:mx-auto lg:w-full">
         {convType === 'PRIVE' && (
           <div className="self-center text-[10px] text-[#6b6b78] bg-[#6A1B9A]/10 px-4 py-1.5 rounded-full">
             🔒 Conversation chiffrée de bout en bout

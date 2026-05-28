@@ -70,7 +70,8 @@ export default function ExportPage() {
         <p className="text-xs opacity-85 mt-0.5">Liste des participants par camp</p>
       </div>
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-8">
+        <div className="lg:max-w-3xl lg:mx-auto">
         <InfoBanner icon="📋">
           L&apos;export est <strong>limité à ton périmètre</strong>. Aucun montant de cotisation n&apos;est exporté.
         </InfoBanner>
@@ -143,6 +144,7 @@ export default function ExportPage() {
         >
           {downloading ? 'Téléchargement…' : '📥 Télécharger .xlsx'}
         </button>
+        </div>
       </div>
     </div>
   );
