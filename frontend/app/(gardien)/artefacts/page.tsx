@@ -9,16 +9,6 @@ const BADGE_LEVEL_EMOJI: Record<string, string> = {
   BRONZE: '🪨', ARGENT: '🥈', OR: '🏅', LEGENDE: '⚜️',
 };
 
-const FIXED_BADGES = [
-  { nom: 'Pierre d\'Éveil', emoji: '🪨', niveau: 'BRONZE', locked: false },
-  { nom: 'Corde du Marcheur', emoji: '🧶', niveau: 'BRONZE', locked: false },
-  { nom: 'Ankh du Gardien', emoji: '☥', niveau: 'ARGENT', locked: false },
-  { nom: 'Flamme du Gardien', emoji: '🔥', niveau: 'OR', locked: true },
-  { nom: 'Gardien Actif', emoji: '🛡️', niveau: 'OR', locked: true },
-  { nom: 'Sentinelle en mission', emoji: '⚔️', niveau: 'OR', locked: true },
-  { nom: 'Gardien d\'Héliopolis', emoji: '🏛', niveau: 'LEGENDE', locked: true },
-];
-
 export default function ArtefactsPage() {
   const [allBadges, setAllBadges] = useState<Badge[]>([]);
   const [myBadges, setMyBadges] = useState<UserBadge[]>([]);
@@ -61,13 +51,12 @@ export default function ArtefactsPage() {
 
           <SectionTitle>Tous les artefacts</SectionTitle>
 
-          {/* Use API data if available, else use fixed list */}
           <div className="grid grid-cols-3 gap-2.5">
-            {(allBadges.length > 0 ? allBadges.map(b => ({
+            {allBadges.map(b => ({
               nom: b.nom, emoji: BADGE_LEVEL_EMOJI[b.niveau] || '🏅',
-              niveau: b.niveau, locked: !ownedIds.has(b.id),
-            })) : FIXED_BADGES).map((b, i) => (
-              <div key={i}
+              niveau: b.niveau, locked: !ownedIds.has(b.id), id: b.id,
+            })).map(b => (
+              <div key={b.id}
                 className={`bg-white border border-[#ececf0] rounded-2xl p-3 text-center relative ${b.locked ? 'opacity-45' : ''}`}>
                 <div className={`w-14 h-14 rounded-full mx-auto mb-2 flex items-center justify-center text-2xl text-white shadow-lg ${
                   b.locked
@@ -84,9 +73,9 @@ export default function ArtefactsPage() {
             ))}
           </div>
 
-          {!loading && allBadges.length === 0 && myBadges.length === 0 && (
+          {!loading && allBadges.length === 0 && (
             <div className="text-center py-6 text-sm text-[#6b6b78]">
-              <p className="text-xs mt-2">Les badges apparaîtront ici au fil de ta Route.</p>
+              <p className="text-xs mt-2">Aucun badge n&apos;est encore configuré.</p>
             </div>
           )}
         </div>

@@ -134,4 +134,6 @@ export const contactsApi = {
 export const exportApi = {
   campParticipants: (campId: string) =>
     `${BASE}/export/camps/${campId}/participants`,
+  campParticipantsFile: (campId: string) =>
+    api.get(`/export/camps/${campId}/participants`, { responseType: 'blob' }),
 };

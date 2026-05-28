@@ -190,6 +190,8 @@ function ContactsTab() {
   const [searchRes, setSearchRes]     = useState<ContactUser[]>([]);
   const [searching, setSearching]     = useState(false);
   const [loading, setLoading]         = useState(true);
+  const canSearch = searchQ.length >= 2;
+  const visibleSearchRes = canSearch ? searchRes : [];
 
   const reload = useCallback(() => {
     Promise.all([
@@ -208,7 +210,7 @@ function ContactsTab() {
   useEffect(() => { reload(); }, [reload]);
 
   useEffect(() => {
-    if (!searchQ || searchQ.length < 2) { setSearchRes([]); return; }
+    if (!canSearch) return;
     const t = setTimeout(async () => {
       setSearching(true);
       try {
@@ -221,7 +223,7 @@ function ContactsTab() {
       }
     }, 400);
     return () => clearTimeout(t);
-  }, [searchQ]);
+  }, [canSearch, searchQ]);
 
   const handleAccept = async (id: string) => {
     await contactsApi.accept(id).catch(() => {});
@@ -267,11 +269,11 @@ function ContactsTab() {
       </div>
 
       {/* Résultats de recherche */}
-      {(searchRes.length > 0 || searching) && (
+      {(visibleSearchRes.length > 0 || (canSearch && searching)) && (
         <div className="px-4 mb-3">
           <SectionLabel>Résultats</SectionLabel>
-          {searching && <div className="text-xs text-center text-[#6b6b78] py-3">Recherche…</div>}
-          {searchRes.map(u => {
+          {canSearch && searching && <div className="text-xs text-center text-[#6b6b78] py-3">Recherche…</div>}
+          {visibleSearchRes.map(u => {
             const alreadySent = sent.some(c => c.receiver.id === u.id);
             const isContact   = accepted.some(c => c.user.id === u.id);
             return (
@@ -295,7 +297,7 @@ function ContactsTab() {
               />
             );
           })}
-          {!searching && searchRes.length === 0 && searchQ.length >= 2 && (
+          {!searching && visibleSearchRes.length === 0 && canSearch && (
             <p className="text-xs text-center text-[#6b6b78] py-3">Aucun résultat pour « {searchQ} »</p>
           )}
         </div>

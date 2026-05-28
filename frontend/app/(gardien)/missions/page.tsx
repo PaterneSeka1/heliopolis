@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { challengesApi } from '@/lib/api';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Pill } from '@/components/ui';
-import type { Challenge, ChallengeCategory } from '@/types';
+import type { Challenge, ChallengeCategory, Submission } from '@/types';
 
 const CAT_COLORS: Record<ChallengeCategory, { border: string; pill: 'rouge' | 'vert' | 'violet' | 'or' }> = {
   PERSONNEL:     { border: 'border-l-[#C62828]', pill: 'rouge' },
@@ -25,23 +25,35 @@ const FILTERS: { label: string; value: ChallengeCategory | 'ALL' }[] = [
 
 export default function MissionsPage() {
   const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [filter, setFilter] = useState<ChallengeCategory | 'ALL'>('ALL');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState<string | null>(null);
 
   useEffect(() => {
-    challengesApi.list().then(r => {
-      setChallenges(r.data);
-      setLoading(false);
-    }).catch(() => setLoading(false));
+    Promise.all([challengesApi.list(), challengesApi.mySubmissions()])
+      .then(([challengeRes, submissionRes]) => {
+        setChallenges(challengeRes.data);
+        setSubmissions(submissionRes.data);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   const filtered = filter === 'ALL' ? challenges : challenges.filter(c => c.categorie === filter);
 
-  const handleSubmit = async (id: string) => {
-    setSubmitting(id);
+  const latestSubmissionByChallenge = new Map<string, Submission>();
+  for (const submission of submissions) {
+    if (!latestSubmissionByChallenge.has(submission.challengeId)) {
+      latestSubmissionByChallenge.set(submission.challengeId, submission);
+    }
+  }
+
+  const handleSubmit = async (challenge: Challenge) => {
+    setSubmitting(challenge.id);
     try {
-      await challengesApi.submit(id, { texte: "Preuve soumise depuis l'app" });
+      const { data } = await challengesApi.submit(challenge.id, { texte: "Preuve soumise depuis l'app" });
+      setSubmissions(prev => [{ ...data, challenge }, ...prev]);
       alert('Preuve soumise ! En attente de validation par ton Guide.');
     } catch {
       alert('Erreur lors de la soumission.');
@@ -81,6 +93,17 @@ export default function MissionsPage() {
           {filtered.map(c => {
             const cat = c.categorie as ChallengeCategory;
             const style = CAT_COLORS[cat];
+            const submission = latestSubmissionByChallenge.get(c.id);
+            const canSubmit = !submission || ['REJETE', 'CORRECTION_DEMANDEE'].includes(submission.statut);
+            const statusLabel = submission?.statut === 'VALIDE'
+              ? 'Validé'
+              : submission?.statut === 'EN_ATTENTE'
+                ? 'En attente'
+                : submission?.statut === 'REJETE'
+                  ? 'À reprendre'
+                  : submission?.statut === 'CORRECTION_DEMANDEE'
+                    ? 'Correction'
+                    : null;
             return (
               <div key={c.id}
                 className={`bg-white rounded-2xl p-3.5 mb-2.5 border border-[#ececf0] border-l-4 ${style.border}`}>
@@ -93,13 +116,20 @@ export default function MissionsPage() {
                   <Pill variant={style.pill}>{CAT_LABELS[cat]}</Pill>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold text-[#9c7218]">+{c.points} pts</span>
-                    <button
-                      onClick={() => handleSubmit(c.id)}
-                      disabled={submitting === c.id}
-                      className="text-xs bg-[#C62828] text-white px-3 py-1 rounded-lg font-semibold disabled:opacity-50"
-                    >
-                      {submitting === c.id ? '…' : 'Soumettre'}
-                    </button>
+                    {statusLabel && (
+                      <Pill variant={submission?.statut === 'VALIDE' ? 'vert' : 'or'}>
+                        {statusLabel}
+                      </Pill>
+                    )}
+                    {canSubmit && (
+                      <button
+                        onClick={() => handleSubmit(c)}
+                        disabled={submitting === c.id}
+                        className="text-xs bg-[#C62828] text-white px-3 py-1 rounded-lg font-semibold disabled:opacity-50"
+                      >
+                        {submitting === c.id ? '…' : submission ? 'Renvoyer' : 'Soumettre'}
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

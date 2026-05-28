@@ -6,10 +6,10 @@
  * (configure dans package.json → "prisma": { "seed": "tsx prisma/seed.ts" })
  */
 
-import 'dotenv/config';
-import { PrismaClient } from '../generated/prisma/client.js';
 import { PrismaPg } from '@prisma/adapter-pg';
 import bcrypt from 'bcryptjs';
+import 'dotenv/config';
+import { PrismaClient } from '../generated/prisma/client.js';
 
 const adapter = new PrismaPg({
   connectionString: process.env['DATABASE_URL']!,
@@ -297,79 +297,215 @@ async function main() {
   }
   console.log(`✔ SENTINELLES : 7 créées (une par doyenné)`);
 
-  // ── 8. Guide — Saint-Joseph de Cocody ──────────────────────────────────────
-  const guideHash = await hash('Guide@2026!');
-  const guide = await prisma.user.upsert({
-    where: { matricule: '0526200J' },
-    update: {
-      passwordHash: guideHash,
-      statutProfil: 'ACTIF',
-      regionId: region.id,
-      districtId: districts['Cocody'].id,
-      parishId: stjoseph.id,
-    },
-    create: {
-      nom: 'Koné',
-      prenoms: 'Awa',
-      matricule: '0526200J',
-      email: 'guide.stjoseph@heliopolis.ci',
-      passwordHash: guideHash,
-      role: 'GUIDE',
-      statutProfil: 'ACTIF',
-      regionId: region.id,
-      districtId: districts['Cocody'].id,
-      parishId: stjoseph.id,
-      communityId: community.id,
-    },
-  });
-  await prisma.parish.update({
-    where: { id: stjoseph.id },
-    data: { guideId: guide.id },
-  });
-  console.log(
-    `✔ GUIDE       : ${guide.prenoms} ${guide.nom}  (${guide.matricule})`,
-  );
+  // ── Données communes — noms ivoiriens ──────────────────────────────────────
+  const NOM_POOL = [
+    'Kouamé',
+    'Konan',
+    'Koffi',
+    'Brou',
+    'Yao',
+    'Traoré',
+    'Coulibaly',
+    'Koné',
+    'Touré',
+    'Bamba',
+    'Diallo',
+    'Ouattara',
+    "N'Guessan",
+    "N'Dri",
+    'Assi',
+    'Aka',
+    'Yapi',
+    'Diabaté',
+    'Doumbia',
+    'Okou',
+    'Ahoussou',
+    'Ehui',
+    'Bogui',
+    'Lago',
+    'Loba',
+    "N'Da",
+    "N'Goran",
+    'Aké',
+    'Attié',
+    'Boa',
+  ];
+  const PRENOM_POOL = [
+    'Emmanuel',
+    'Aminata',
+    'Kofi',
+    'Fatou',
+    'Jean-Baptiste',
+    'Charlotte',
+    'Youssouf',
+    'Esther',
+    'Franck',
+    'Bintou',
+    'Thierry',
+    'Delphine',
+    'Patrick',
+    'Grâce',
+    'Olivier',
+    'Hortense',
+    'Serge',
+    'Inès',
+    'Augustin',
+    'Joëlle',
+    'Laurent',
+    'Mariame',
+    'Marcel',
+    'Nathalie',
+    'Narcisse',
+    'Odette',
+    'Régis',
+    'Sandra',
+    'Sylvain',
+    'Tatiana',
+    'Théodore',
+    'Véronique',
+  ];
+  const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
-  // ── 9. Gardiens de démonstration ─────────────────────────────────────────────
-  const gardiensInput = [
-    { nom: 'Kouamé', prenoms: 'Emmanuel', matricule: '0526301K' },
-    { nom: 'Moussa', prenoms: 'Salif', matricule: '0526302L' },
-    { nom: 'Traoré', prenoms: 'Aminata', matricule: '0526303M' },
-    { nom: 'Diomandé', prenoms: 'Bintou', matricule: '0526304N' },
-    { nom: "N'Guessan", prenoms: 'Félix', matricule: '0526305O' },
+  // ── 8. Guides — 3 par paroisse (plein · adjoint · assistant) ───────────────
+  type GuideRole = 'PLEIN' | 'ADJOINT' | 'ASSISTANT';
+  const GUIDE_FONCTIONS: Array<{ guideRole: GuideRole; typeIdx: number }> = [
+    { guideRole: 'PLEIN', typeIdx: 1 },
+    { guideRole: 'ADJOINT', typeIdx: 2 },
+    { guideRole: 'ASSISTANT', typeIdx: 3 },
   ];
 
-  const gardienHash = await hash('Gardien@2026!');
-  for (const g of gardiensInput) {
-    await prisma.user.upsert({
-      where: { matricule: g.matricule },
-      update: {
-        passwordHash: gardienHash,
-        statutProfil: 'ACTIF',
-        regionId: region.id,
-        districtId: districts['Cocody'].id,
-        parishId: stjoseph.id,
-      },
-      create: {
-        nom: g.nom,
-        prenoms: g.prenoms,
-        matricule: g.matricule,
-        email: `${g.matricule.toLowerCase()}@heliopolis.ci`,
-        passwordHash: gardienHash,
-        role: 'GARDIEN',
-        statutProfil: 'ACTIF',
-        regionId: region.id,
-        districtId: districts['Cocody'].id,
-        parishId: stjoseph.id,
-        communityId: community.id,
-      },
-    });
+  const guideHash = await hash('Guide@2026!');
+  const guidePleinIds: string[] = [];
+  let totalGuides = 0;
+
+  for (let dIdx = 0; dIdx < districtsInput.length; dIdx++) {
+    const districtName = districtsInput[dIdx].nom;
+    const district = districts[districtName];
+    const districtParishes =
+      parishesInput.find((pd) => pd.district === districtName)?.parishes ?? [];
+
+    for (let pIdx = 0; pIdx < districtParishes.length; pIdx++) {
+      const parishName = districtParishes[pIdx];
+      const parish = parishes[parishName];
+      const isSaintJoseph = parishName === 'Saint-Joseph de Cocody';
+
+      for (const { guideRole, typeIdx } of GUIDE_FONCTIONS) {
+        totalGuides++;
+        const letter = ALPHABET[(totalGuides - 1) % 26];
+        // Format : 27 + district(2) + paroisse(2) + fonction(1) + lettre → 8 chars
+        const matricule = `27${String(dIdx + 1).padStart(2, '0')}${String(pIdx + 1).padStart(2, '0')}${typeIdx}${letter}`;
+        const nom = NOM_POOL[(dIdx * 6 + pIdx * 4 + typeIdx) % NOM_POOL.length];
+        const prenom =
+          PRENOM_POOL[(dIdx * 9 + pIdx * 5 + typeIdx + 1) % PRENOM_POOL.length];
+
+        const guideUser = await prisma.user.upsert({
+          where: { matricule },
+          update: {
+            passwordHash: guideHash,
+            statutProfil: 'ACTIF',
+            regionId: region.id,
+            districtId: district.id,
+            parishId: parish.id,
+          },
+          create: {
+            nom,
+            prenoms: prenom,
+            matricule,
+            email: `${matricule.toLowerCase()}@heliopolis.ci`,
+            passwordHash: guideHash,
+            role: 'GUIDE',
+            statutProfil: 'ACTIF',
+            regionId: region.id,
+            districtId: district.id,
+            parishId: parish.id,
+            ...(isSaintJoseph && guideRole === 'PLEIN'
+              ? { communityId: community.id }
+              : {}),
+          },
+        });
+
+        // guideRole est un enum ajouté par la migration — on le pose via SQL
+        await prisma.$executeRaw`
+          UPDATE "users"
+          SET "guideRole" = ${guideRole}::"GuideRole"
+          WHERE id = ${guideUser.id}
+        `;
+
+        if (guideRole === 'PLEIN') {
+          guidePleinIds.push(guideUser.id);
+          await prisma.parish.update({
+            where: { id: parish.id },
+            data: { guideId: guideUser.id },
+          });
+        }
+      }
+    }
   }
-  console.log(`✔ GARDIENS    : ${gardiensInput.length} de démonstration créés`);
+  console.log(
+    `✔ GUIDES      : ${totalGuides} créés (3 par paroisse · ${Object.keys(parishes).length} paroisses · plein / adjoint / assistant)`,
+  );
+
+  // ── 9. Gardiens — 5 actifs par paroisse ────────────────────────────────────
+
+  const gardienHash = await hash('Gardien@2026!');
+  const gardienIdsAJour: string[] = [];
+  let totalGardiens = 0;
+
+  for (let dIdx = 0; dIdx < districtsInput.length; dIdx++) {
+    const districtName = districtsInput[dIdx].nom;
+    const district = districts[districtName];
+    const districtParishes =
+      parishesInput.find((pd) => pd.district === districtName)?.parishes ?? [];
+
+    for (let pIdx = 0; pIdx < districtParishes.length; pIdx++) {
+      const parishName = districtParishes[pIdx];
+      const parish = parishes[parishName];
+
+      for (let gIdx = 1; gIdx <= 5; gIdx++) {
+        totalGardiens++;
+        const letter = ALPHABET[(totalGardiens - 1) % 26];
+        // Format : 26 + district(2) + paroisse(2) + gardien(1) + lettre → 8 chars
+        const matricule = `26${String(dIdx + 1).padStart(2, '0')}${String(pIdx + 1).padStart(2, '0')}${gIdx}${letter}`;
+        const nom =
+          NOM_POOL[(dIdx * 5 + pIdx * 3 + gIdx - 1) % NOM_POOL.length];
+        const prenom =
+          PRENOM_POOL[(dIdx * 7 + pIdx * 4 + gIdx) % PRENOM_POOL.length];
+
+        const gardien = await prisma.user.upsert({
+          where: { matricule },
+          update: {
+            passwordHash: gardienHash,
+            statutProfil: 'ACTIF',
+            regionId: region.id,
+            districtId: district.id,
+            parishId: parish.id,
+          },
+          create: {
+            nom,
+            prenoms: prenom,
+            matricule,
+            email: `${matricule.toLowerCase()}@heliopolis.ci`,
+            passwordHash: gardienHash,
+            role: 'GARDIEN',
+            statutProfil: 'ACTIF',
+            regionId: region.id,
+            districtId: district.id,
+            parishId: parish.id,
+          },
+        });
+
+        // Les 3 premiers par paroisse sont à jour (les 2 derniers restent en attente)
+        if (gIdx <= 3) gardienIdsAJour.push(gardien.id);
+      }
+    }
+  }
+  console.log(
+    `✔ GARDIENS    : ${totalGardiens} créés (5 par paroisse · ${Object.keys(parishes).length} paroisses)`,
+  );
 
   // ── 10. Adhésions 2026 ───────────────────────────────────────────────────────
-  // Admin, Hiérophante et Guide — à jour
-  for (const userId of [admin.id, hierophante.id, guide.id]) {
+  // Encadrants à jour
+  for (const userId of [admin.id, hierophante.id, ...guidePleinIds]) {
     await prisma.adhesion.upsert({
       where: { userId_annee: { userId, annee: 2026 } },
       update: {},
@@ -382,7 +518,23 @@ async function main() {
       },
     });
   }
-  console.log(`✔ Adhésions   : admin, hiérophante et guide marqués À jour`);
+  // Gardiens — 3 sur 5 à jour par paroisse, les 2 derniers en attente
+  for (const userId of gardienIdsAJour) {
+    await prisma.adhesion.upsert({
+      where: { userId_annee: { userId, annee: 2026 } },
+      update: {},
+      create: {
+        userId,
+        annee: 2026,
+        statut: 'A_JOUR',
+        validateurId: admin.id,
+        dateValidation: new Date(),
+      },
+    });
+  }
+  console.log(
+    `✔ Adhésions   : admin + hiérophante + ${guidePleinIds.length} guides pleins + ${gardienIdsAJour.length} gardiens (3/paroisse) marqués À jour`,
+  );
 
   // ── 11. Badges ──────────────────────────────────────────────────────────────
   const badgesInput = [
@@ -626,15 +778,18 @@ async function main() {
   console.log('═══════════════════════════════════════════════════════════');
   console.log('');
   console.log('  Comptes créés :');
-  console.log('  ┌──────────────┬──────────────┬──────────────────────┐');
-  console.log('  │ Rôle         │ Matricule    │ Mot de passe         │');
-  console.log('  ├──────────────┼──────────────┼──────────────────────┤');
-  console.log('  │ ADMIN        │ 0000001A     │ Admin@2026!          │');
-  console.log('  │ REGION       │ 0000002B     │ Region@2026!         │');
-  console.log('  │ SENTINELLE   │ 0526101C     │ Sentinelle@2026!     │');
-  console.log('  │ GUIDE        │ 0526200J     │ Guide@2026!          │');
-  console.log('  │ GARDIEN      │ 0526301K     │ Gardien@2026!        │');
-  console.log('  └──────────────┴──────────────┴──────────────────────┘');
+  console.log('  ┌─────────────────┬──────────────┬──────────────────────┐');
+  console.log('  │ Rôle            │ Matricule    │ Mot de passe         │');
+  console.log('  ├─────────────────┼──────────────┼──────────────────────┤');
+  console.log('  │ ADMIN           │ 0000001A     │ Admin@2026!          │');
+  console.log('  │ REGION          │ 0000002B     │ Region@2026!         │');
+  console.log('  │ SENTINELLE      │ 0526101C     │ Sentinelle@2026!     │');
+  console.log('  │ GUIDE (plein)   │ 2702011P *   │ Guide@2026!          │');
+  console.log('  │ GUIDE (adjoint) │ 2702012Q *   │ Guide@2026!          │');
+  console.log('  │ GUIDE (asst.)   │ 2702013R *   │ Guide@2026!          │');
+  console.log('  │ GARDIEN         │ 2601011A *   │ Gardien@2026!        │');
+  console.log('  └─────────────────┴──────────────┴──────────────────────┘');
+  console.log('  * exemples — Saint-Joseph de Cocody / Treichville p.1');
   console.log('');
   console.log('  URL API  : http://localhost:4000/api');
   console.log('  URL App  : http://localhost:3000');
@@ -642,8 +797,8 @@ async function main() {
 }
 
 main()
-  .catch((e) => {
-    console.error('\n❌ Erreur seed :', e);
+  .catch((e: Error) => {
+    console.error('\n❌ Erreur seed :', e.message);
     process.exit(1);
   })
   .finally(async () => {

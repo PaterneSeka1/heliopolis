@@ -1,8 +1,9 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
 import { getHomeForRole } from '@/lib/roles';
+import { authApi } from '@/lib/api';
 import type { UserRole } from '@/types';
 
 interface AuthGuardProps {
@@ -12,19 +13,54 @@ interface AuthGuardProps {
 
 export function AuthGuard({ children, roles }: AuthGuardProps) {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, setUser, logout } = useAuthStore();
+  const [checking, setChecking] = useState(true);
+  const rolesKey = useMemo(() => roles?.join('|') ?? '', [roles]);
 
   useEffect(() => {
+    let cancelled = false;
+
+    async function refreshUser() {
+      const token =
+        typeof window !== 'undefined'
+          ? window.localStorage.getItem('access_token')
+          : null;
+
+      if (!token) {
+        router.replace('/activation');
+        setChecking(false);
+        return;
+      }
+
+      try {
+        const { data } = await authApi.me();
+        if (!cancelled) setUser(data);
+      } catch {
+        logout();
+        if (!cancelled) router.replace('/activation');
+      } finally {
+        if (!cancelled) setChecking(false);
+      }
+    }
+
+    refreshUser();
+    return () => {
+      cancelled = true;
+    };
+  }, [logout, router, setUser]);
+
+  useEffect(() => {
+    if (checking) return;
     if (!user) {
       router.replace('/activation');
       return;
     }
-    if (roles && !roles.includes(user.role)) {
+    if (rolesKey && !rolesKey.split('|').includes(user.role)) {
       router.replace(getHomeForRole(user.role));
     }
-  }, [user, router, roles]);
+  }, [checking, user, router, rolesKey]);
 
-  if (!user) return (
+  if (checking || !user) return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="text-center">
         <div className="text-4xl mb-3">🛡️</div>
@@ -33,7 +69,7 @@ export function AuthGuard({ children, roles }: AuthGuardProps) {
     </div>
   );
 
-  if (roles && !roles.includes(user.role)) return null;
+  if (rolesKey && !rolesKey.split('|').includes(user.role)) return null;
 
   return <>{children}</>;
 }

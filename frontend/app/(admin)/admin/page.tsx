@@ -1,12 +1,12 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { territoriesApi, campsApi, codexApi } from '@/lib/api';
+import { territoriesApi, campsApi, codexApi, messagingApi } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { LogoutButton } from '@/components/auth/LogoutButton';
 import { Card, Stat, SectionTitle, Progress, Pill } from '@/components/ui';
-import type { Camp, Submission } from '@/types';
+import type { Camp, Submission, Conversation } from '@/types';
 
 interface Stats { totalGardiens: number; campsOuverts: number; defisValides: number; doyennes: number; }
 
@@ -15,18 +15,24 @@ export default function DashboardAdminPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [camps, setCamps] = useState<Camp[]>([]);
   const [pending, setPending] = useState<Submission[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
 
   useEffect(() => {
     Promise.all([
       territoriesApi.stats(),
       campsApi.list(),
       codexApi.pending(),
-    ]).then(([s, c, p]) => {
+      messagingApi.conversations(),
+    ]).then(([s, c, p, conv]) => {
       setStats(s.data);
       setCamps(c.data);
       setPending(p.data);
+      setConversations(conv.data);
     }).catch(() => {});
   }, []);
+
+  const activeCamps = camps.filter(c => ['OUVERT', 'EN_COURS'].includes(c.statut));
+  const maxParticipants = Math.max(1, ...activeCamps.map(c => c._count?.participants ?? 0));
 
   return (
     <AuthGuard roles={['ADMIN', 'REGION']}>
@@ -59,7 +65,7 @@ export default function DashboardAdminPage() {
           <SectionTitle action={<Link href="/admin/camps/nouveau" className="text-xs text-[#C62828] font-semibold">+ Nouveau →</Link>}>
             Camps actifs
           </SectionTitle>
-          {camps.filter(c => ['OUVERT', 'EN_COURS'].includes(c.statut)).map(camp => (
+          {activeCamps.map(camp => (
             <Card key={camp.id} className="mb-2.5">
               <div className="flex justify-between items-start mb-2">
                 <div className="flex-1 min-w-0">
@@ -74,7 +80,7 @@ export default function DashboardAdminPage() {
                 <span>Participants</span>
                 <span className="font-semibold text-[#1F1B2E]">{camp._count?.participants ?? 0}</span>
               </div>
-              <Progress value={camp._count?.participants ?? 0} max={200} />
+              <Progress value={camp._count?.participants ?? 0} max={maxParticipants} />
             </Card>
           ))}
 
@@ -101,6 +107,38 @@ export default function DashboardAdminPage() {
                   </div>
                 </Card>
               ))}
+            </>
+          )}
+
+          {/* Messages récents */}
+          {conversations.length > 0 && (
+            <>
+              <SectionTitle action={<Link href="/messages" className="text-xs text-[#C62828] font-semibold">Tout voir →</Link>}>
+                💬 Messages récents
+              </SectionTitle>
+              {conversations.slice(0, 3).map(conv => {
+                const lastMsg = conv.messages?.[0];
+                const ICON: Record<string, string> = { COMMUNAUTE: '🌍', REGION: '🗺️', DOYENNE: '🛡️', PAROISSE: '⛪', PRIVE: '🤝', GROUPE: '👥' };
+                const timeStr = conv.lastMessageAt
+                  ? new Date(conv.lastMessageAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+                  : '';
+                return (
+                  <Link key={conv.id} href={`/messages/${conv.id}`}>
+                    <Card className="mb-2.5 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#6A1B9A] to-[#3d1163] flex items-center justify-center text-base text-white flex-shrink-0">
+                        {ICON[conv.type] ?? '💬'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-center gap-1">
+                          <span className="font-semibold text-xs text-[#1F1B2E] truncate">{conv.nom ?? 'Conversation'}</span>
+                          {timeStr && <span className="text-[10px] text-[#6b6b78] flex-shrink-0">{timeStr}</span>}
+                        </div>
+                        <p className="text-[11px] text-[#6b6b78] truncate mt-0.5">{lastMsg?.contenu ?? 'Aucun message'}</p>
+                      </div>
+                    </Card>
+                  </Link>
+                );
+              })}
             </>
           )}
 

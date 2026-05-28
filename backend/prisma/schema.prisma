@@ -153,6 +153,13 @@ enum ConversationMemberRole {
   MEMBRE
 }
 
+/// Fonction d'un guide au sein de sa paroisse
+enum GuideRole {
+  PLEIN /// Guide responsable principal
+  ADJOINT /// Guide adjoint
+  ASSISTANT /// Coordinateur de communauté
+}
+
 enum MessageStatus {
   ENVOYE
   LIVRE
@@ -315,6 +322,7 @@ model User {
   dateNaissance DateTime?     @db.Date
   sexe          String?       @db.Char(1)
   role          UserRole      @default(GARDIEN)
+  guideRole     GuideRole? /// PLEIN · ADJOINT · ASSISTANT (null pour les non-guides)
   statutProfil  ProfileStatus @default(EN_ATTENTE_ACTIVATION)
 
   // Rattachements territoriaux

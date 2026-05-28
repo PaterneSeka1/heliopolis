@@ -94,7 +94,7 @@ export function Avatar({ initials, size = 42, className = '' }: { initials: stri
 
 // ─── Progress ─────────────────────────────────────────────────────────────────
 export function Progress({ value, max = 100 }: { value: number; max?: number }) {
-  const pct = Math.round((value / max) * 100);
+  const pct = Math.min(100, Math.round((value / Math.max(1, max)) * 100));
   return (
     <div className="h-1.5 bg-[#ececf0] rounded-full overflow-hidden">
       <div className="h-full bg-gradient-to-r from-[#F58A4B] to-[#C62828] rounded-full transition-all" style={{ width: `${pct}%` }} />

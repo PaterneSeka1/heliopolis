@@ -2,19 +2,20 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/auth';
-import { usersApi, challengesApi, campsApi } from '@/lib/api';
+import { usersApi, challengesApi, campsApi, messagingApi } from '@/lib/api';
 import { getTerritoryLabel, ROLE_LABEL } from '@/lib/roles';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { LogoutButton } from '@/components/auth/LogoutButton';
 import { Card, Stat, SectionTitle, Button } from '@/components/ui';
 import { CampCard } from '@/components/camps/CampCard';
-import type { User, Camp, Submission } from '@/types';
+import type { User, Camp, Submission, Conversation } from '@/types';
 
 export default function DashboardGuidePage() {
   const { user } = useAuthStore();
   const [routiers, setRoutiers] = useState<User[]>([]);
   const [camps, setCamps] = useState<Camp[]>([]);
   const [pending, setPending] = useState<Submission[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -31,10 +32,12 @@ export default function DashboardGuidePage() {
       usersApi.list(params),
       campsApi.list({ statut: 'OUVERT' }),
       challengesApi.pending(),
-    ]).then(([u, c, p]) => {
+      messagingApi.conversations(),
+    ]).then(([u, c, p, conv]) => {
       setRoutiers(u.data);
       setCamps(c.data);
       setPending(p.data);
+      setConversations(conv.data);
     }).catch(() => {});
   }, [user]);
 
@@ -113,6 +116,38 @@ export default function DashboardGuidePage() {
                   </Link>
                 </div>
               ))}
+            </>
+          )}
+
+          {/* Messages récents */}
+          {conversations.length > 0 && (
+            <>
+              <SectionTitle action={<Link href="/messages" className="text-xs text-[#C62828] font-semibold">Tout voir →</Link>}>
+                Messages récents
+              </SectionTitle>
+              {conversations.slice(0, 3).map(conv => {
+                const lastMsg = conv.messages?.[0];
+                const ICON: Record<string, string> = { COMMUNAUTE: '🌍', REGION: '🗺️', DOYENNE: '🛡️', PAROISSE: '⛪', PRIVE: '🤝', GROUPE: '👥' };
+                const timeStr = conv.lastMessageAt
+                  ? new Date(conv.lastMessageAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+                  : '';
+                return (
+                  <Link key={conv.id} href={`/messages/${conv.id}`}>
+                    <Card className="mb-2.5 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#6A1B9A] to-[#3d1163] flex items-center justify-center text-base text-white flex-shrink-0">
+                        {ICON[conv.type] ?? '💬'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-center gap-1">
+                          <span className="font-semibold text-xs text-[#1F1B2E] truncate">{conv.nom ?? 'Conversation'}</span>
+                          {timeStr && <span className="text-[10px] text-[#6b6b78] flex-shrink-0">{timeStr}</span>}
+                        </div>
+                        <p className="text-[11px] text-[#6b6b78] truncate mt-0.5">{lastMsg?.contenu ?? 'Aucun message'}</p>
+                      </div>
+                    </Card>
+                  </Link>
+                );
+              })}
             </>
           )}
 

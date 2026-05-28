@@ -31,6 +31,21 @@
 $ npm install
 ```
 
+## Local database
+
+This backend uses Prisma dev Postgres in local development.
+
+```bash
+# terminal 1: keep the local Prisma database running
+$ npm run db:dev
+
+# terminal 2: sync .env with the Prisma dev port, then start Nest
+$ npm run dev
+```
+
+If the Prisma dev server was restarted, run `npm run db:sync` before using
+`npm run start:dev`.
+
 ## Compile and run the project
 
 ```bash

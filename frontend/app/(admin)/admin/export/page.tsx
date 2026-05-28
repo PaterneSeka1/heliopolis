@@ -3,19 +3,14 @@ import { useEffect, useState } from 'react';
 import { campsApi, exportApi } from '@/lib/api';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Select, InfoBanner } from '@/components/ui';
-import type { Camp } from '@/types';
-
-const MOCK_ROWS = [
-  { n: 1, nom: 'Kouamé E.', matricule: '0525247O', paroisse: 'St-Joseph', adhesion: 'À jour', statut: 'Confirmé' },
-  { n: 2, nom: 'Moussa S.',  matricule: '0525248P', paroisse: 'St-Joseph', adhesion: 'À jour', statut: 'Confirmé' },
-  { n: 3, nom: 'Traoré A.',  matricule: '0525249Q', paroisse: 'St-Paul',   adhesion: 'Non à jour', statut: 'Sélectionné' },
-  { n: 4, nom: 'Diomandé B.',matricule: '0525250R', paroisse: 'St-Paul',   adhesion: 'En attente', statut: 'Sélectionné' },
-  { n: 5, nom: "N'Guessan F.",matricule:'0525251S', paroisse: 'Christ-Roi',adhesion: 'À jour', statut: 'Confirmé' },
-];
+import type { Camp, CampParticipant } from '@/types';
 
 export default function ExportPage() {
   const [camps, setCamps] = useState<Camp[]>([]);
   const [campId, setCampId] = useState('');
+  const [participants, setParticipants] = useState<CampParticipant[]>([]);
+  const [participantsCampId, setParticipantsCampId] = useState('');
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     campsApi.list().then(r => {
@@ -24,7 +19,47 @@ export default function ExportPage() {
     }).catch(() => {});
   }, []);
 
-  const downloadUrl = campId ? exportApi.campParticipants(campId) : '#';
+  useEffect(() => {
+    if (!campId) {
+      return;
+    }
+
+    let cancelled = false;
+    campsApi.participants(campId)
+      .then(r => {
+        if (cancelled) return;
+        setParticipants(r.data);
+        setParticipantsCampId(campId);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setParticipants([]);
+        setParticipantsCampId(campId);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [campId]);
+
+  const visibleParticipants = participantsCampId === campId ? participants : [];
+
+  const handleDownload = async () => {
+    if (!campId) return;
+    setDownloading(true);
+    try {
+      const { data } = await exportApi.campParticipantsFile(campId);
+      const href = URL.createObjectURL(data);
+      const link = document.createElement('a');
+      link.href = href;
+      link.download = `participants-${campId}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(href);
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
     <AuthGuard roles={['ADMIN', 'REGION', 'SENTINELLE']}>
@@ -48,7 +83,6 @@ export default function ExportPage() {
             </Select>
           </div>
 
-          {/* Preview table */}
           <div className="text-xs font-semibold text-[#1F1B2E] mb-2">Aperçu (5 premières lignes)</div>
           <div className="bg-white border border-[#ececf0] rounded-2xl overflow-hidden mb-4">
             <div className="overflow-x-auto">
@@ -61,22 +95,36 @@ export default function ExportPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {MOCK_ROWS.map(r => (
-                    <tr key={r.n} className="border-t border-[#f0f0f4] hover:bg-[#fafafc]">
-                      <td className="px-3 py-2.5 text-[#6b6b78]">{r.n}</td>
-                      <td className="px-3 py-2.5 font-medium text-[#1F1B2E]">{r.nom}</td>
-                      <td className="px-3 py-2.5 font-mono text-[#6b6b78]">{r.matricule}</td>
-                      <td className="px-3 py-2.5 text-[#6b6b78]">{r.paroisse}</td>
+                  {visibleParticipants.slice(0, 5).map((p, index) => (
+                    <tr key={p.id} className="border-t border-[#f0f0f4] hover:bg-[#fafafc]">
+                      <td className="px-3 py-2.5 text-[#6b6b78]">{index + 1}</td>
+                      <td className="px-3 py-2.5 font-medium text-[#1F1B2E]">{p.user.prenoms} {p.user.nom}</td>
+                      <td className="px-3 py-2.5 font-mono text-[#6b6b78]">{p.user.matricule ?? '—'}</td>
+                      <td className="px-3 py-2.5 text-[#6b6b78]">{p.parish.nom}</td>
                       <td className="px-3 py-2.5">
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                          r.adhesion === 'À jour' ? 'bg-[#e1f4e3] text-[#2E7D32]' :
-                          r.adhesion === 'Non à jour' ? 'bg-[#fff3d6] text-[#9c7218]' :
+                          p.adhesionStatusSnapshot === 'A_JOUR' ? 'bg-[#e1f4e3] text-[#2E7D32]' :
+                          p.adhesionStatusSnapshot === 'NON_A_JOUR' ? 'bg-[#fff3d6] text-[#9c7218]' :
                           'bg-[#f0e3ff] text-[#6A1B9A]'
-                        }`}>{r.adhesion}</span>
+                        }`}>{p.adhesionStatusSnapshot}</span>
                       </td>
-                      <td className="px-3 py-2.5 text-[#6b6b78]">{r.statut}</td>
+                      <td className="px-3 py-2.5 text-[#6b6b78]">{p.participationStatus}</td>
                     </tr>
                   ))}
+                  {participantsCampId === campId && visibleParticipants.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="px-3 py-6 text-center text-[#6b6b78]">
+                        Aucun participant sélectionné pour ce camp.
+                      </td>
+                    </tr>
+                  )}
+                  {participantsCampId !== campId && (
+                    <tr>
+                      <td colSpan={6} className="px-3 py-6 text-center text-[#6b6b78]">
+                        Chargement…
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -85,16 +133,16 @@ export default function ExportPage() {
             ⚠️ Aucun montant de cotisation n&apos;est exporté
           </p>
 
-          <a
-            href={downloadUrl}
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            type="button"
+            onClick={handleDownload}
+            disabled={!campId || downloading}
             className={`block w-full text-center font-bold text-sm py-3.5 rounded-xl transition ${
-              campId ? 'bg-[#2E7D32] text-white hover:bg-[#256128]' : 'bg-[#e6e6ea] text-[#6b6b78] pointer-events-none'
+              campId ? 'bg-[#2E7D32] text-white hover:bg-[#256128]' : 'bg-[#e6e6ea] text-[#6b6b78]'
             }`}
           >
-            📥 Télécharger .xlsx
-          </a>
+            {downloading ? 'Téléchargement…' : '📥 Télécharger .xlsx'}
+          </button>
         </div>
       </div>
     </AuthGuard>

@@ -1,12 +1,13 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { territoriesApi, campsApi } from '@/lib/api';
+import Link from 'next/link';
+import { territoriesApi, campsApi, usersApi, challengesApi, messagingApi } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { LogoutButton } from '@/components/auth/LogoutButton';
 import { Progress, Pill } from '@/components/ui';
 import { GardiensBlazon } from '@/components/layout/GardiensBlazon';
-import type { District, Camp } from '@/types';
+import type { Challenge, District, Camp, CampParticipant, User, Conversation } from '@/types';
 
 interface RegionStats {
   doyennes?: number;
@@ -17,18 +18,66 @@ export default function DashboardRegionPage() {
   const [districts, setDistricts] = useState<District[]>([]);
   const [stats, setStats] = useState<RegionStats | null>(null);
   const [camps, setCamps] = useState<Camp[]>([]);
+  const [gardiens, setGardiens] = useState<User[]>([]);
+  const [sentinelles, setSentinelles] = useState<User[]>([]);
+  const [participants, setParticipants] = useState<CampParticipant[]>([]);
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
 
   useEffect(() => {
-    Promise.all([
-      territoriesApi.districts(),
-      territoriesApi.stats(),
-      campsApi.list({ statut: 'OUVERT' }),
-    ]).then(([d, s, c]) => {
-      setDistricts(d.data);
-      setStats(s.data);
-      setCamps(c.data);
-    }).catch(() => {});
+    (async () => {
+      try {
+        const [d, s, c, g, sent, ch, conv] = await Promise.all([
+          territoriesApi.districts(),
+          territoriesApi.stats(),
+          campsApi.list({ statut: 'OUVERT' }),
+          usersApi.list({ role: 'GARDIEN' }),
+          usersApi.list({ role: 'SENTINELLE' }),
+          challengesApi.list(),
+          messagingApi.conversations(),
+        ]);
+        setDistricts(d.data);
+        setStats(s.data);
+        setCamps(c.data);
+        setGardiens(g.data);
+        setSentinelles(sent.data);
+        setChallenges(ch.data);
+        setConversations(conv.data);
+
+        if (c.data[0]?.id) {
+          const p = await campsApi.participants(c.data[0].id);
+          setParticipants(p.data);
+        }
+      } catch { /* ignore */ }
+    })();
   }, []);
+
+  const activeCamp = camps[0];
+  const parishesCount = districts.reduce((total, d) => total + (d._count?.parishes ?? 0), 0);
+  const gardiensByDistrict = new Map<string, number>();
+  const participantsByDistrict = new Map<string, number>();
+  const sentinelleByDistrict = new Map<string, User>();
+
+  for (const gardien of gardiens) {
+    if (gardien.district?.id) {
+      gardiensByDistrict.set(gardien.district.id, (gardiensByDistrict.get(gardien.district.id) ?? 0) + 1);
+    }
+  }
+  for (const participant of participants) {
+    participantsByDistrict.set(
+      participant.district.id,
+      (participantsByDistrict.get(participant.district.id) ?? 0) + 1,
+    );
+  }
+  for (const sentinelle of sentinelles) {
+    if (sentinelle.district?.id) sentinelleByDistrict.set(sentinelle.district.id, sentinelle);
+  }
+
+  const transmittedDistricts = districts.filter(d => (participantsByDistrict.get(d.id) ?? 0) > 0).length;
+  const maxCampParticipants = Math.max(1, ...camps.map(c => c._count?.participants ?? 0));
+  const topChallenges = [...challenges]
+    .sort((a, b) => (b._count?.submissions ?? 0) - (a._count?.submissions ?? 0))
+    .slice(0, 5);
 
   return (
     <AuthGuard roles={['ADMIN', 'REGION']}>
@@ -97,10 +146,10 @@ export default function DashboardRegionPage() {
           {/* KPIs */}
           <div className="grid grid-cols-4 gap-3.5 mb-5">
             {[
-              { label: 'Doyennés', value: stats?.doyennes ?? 7, delta: '100% rattachés', icon: '🛡️', color: '#C62828' },
-              { label: 'Paroisses actives', value: districts.length > 0 ? `38 / 42` : '—', delta: '4 sans Guide', icon: '⛪', color: '#6A1B9A', neg: true },
-              { label: 'Camp d\'Abay-Ka', value: camps[0]?._count?.participants ?? 147, delta: 'participants sélectionnés', icon: '⛺', color: '#D9A441' },
-              { label: 'Doyennés transmis', value: '5 / 7', delta: 'Plateau & Bassam en retard', icon: '✓', color: '#2E7D32', neg: true },
+              { label: 'Doyennés', value: stats?.doyennes ?? districts.length, delta: `${districts.length} chargés`, icon: '🛡️', color: '#C62828' },
+              { label: 'Paroisses actives', value: parishesCount, delta: 'données territoriales', icon: '⛪', color: '#6A1B9A' },
+              { label: activeCamp?.nom ?? 'Camp ouvert', value: activeCamp?._count?.participants ?? 0, delta: 'participants sélectionnés', icon: '⛺', color: '#D9A441' },
+              { label: 'Doyennés transmis', value: `${transmittedDistricts} / ${districts.length || 0}`, delta: activeCamp ? activeCamp.nom : 'aucun camp ouvert', icon: '✓', color: '#2E7D32', neg: transmittedDistricts < districts.length },
             ].map(kpi => (
               <div key={kpi.label} className="bg-white border border-[#ececf0] rounded-2xl p-4 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-10 h-10 rounded-bl-2xl flex items-center justify-center text-lg"
@@ -115,7 +164,7 @@ export default function DashboardRegionPage() {
           {/* Suivi doyennés */}
           <div className="bg-white border border-[#ececf0] rounded-2xl p-4 mb-5">
             <h3 className="font-bold text-sm text-[#1F1B2E] mb-4 flex justify-between">
-              Suivi des doyennés — Camp d&apos;Abay-Ka 2026
+              Suivi des doyennés — {activeCamp?.nom ?? 'aucun camp ouvert'}
               <span className="text-xs text-[#C62828] font-semibold cursor-pointer">Détail →</span>
             </h3>
             <table className="w-full text-xs border-collapse">
@@ -127,77 +176,104 @@ export default function DashboardRegionPage() {
                 </tr>
               </thead>
               <tbody>
-                {[
-                  { nom: 'Yopougon',      s: 'P. Kouassi', p: 11, r: 203, sel: 42, max: 60, statut: 'valide' },
-                  { nom: 'Cocody',        s: 'M. N\'Dri',  p: 8,  r: 156, sel: 38, max: 50, statut: 'valide' },
-                  { nom: 'Marcory',       s: 'S. Bamba',   p: 6,  r: 124, sel: 31, max: 40, statut: 'valide' },
-                  { nom: 'Plateau',       s: 'J. Yao',     p: 5,  r: 98,  sel: 21, max: 30, statut: 'attente' },
-                  { nom: 'Bingerville',   s: 'D. Coulibaly',p: 4, r: 87,  sel: 9,  max: 30, statut: 'non' },
-                  { nom: 'Abobo',         s: 'R. Ouattara',p: 6,  r: 76,  sel: 3,  max: 25, statut: 'non' },
-                  { nom: 'Grand-Bassam',  s: 'F. Diomandé',p: 2,  r: 103, sel: 3,  max: 20, statut: 'attente' },
-                ].map(row => (
-                  <tr key={row.nom} className="border-b border-[#f0f0f4] hover:bg-[#fafafc]">
-                    <td className="px-3 py-3 font-semibold text-[#1F1B2E]">{row.nom}</td>
-                    <td className="px-3 py-3 text-[#6b6b78]">{row.s}</td>
-                    <td className="px-3 py-3 text-center text-[#6b6b78]">{row.p}</td>
-                    <td className="px-3 py-3 text-center text-[#6b6b78]">{row.r}</td>
-                    <td className="px-3 py-3">
-                      <div className="font-semibold text-[#1F1B2E] mb-1">{row.sel} / {row.max}</div>
-                      <Progress value={row.sel} max={row.max} />
-                    </td>
-                    <td className="px-3 py-3">
-                      {row.statut === 'valide' ? <Pill variant="vert">✓ Validé</Pill> :
-                       row.statut === 'attente' ? <Pill variant="or">⏳ En attente</Pill> :
-                       <Pill variant="rouge">✕ Non transmis</Pill>}
-                    </td>
-                    <td className="px-3 py-3">
-                      <button className={`text-[11px] border rounded-lg px-2.5 py-1 font-semibold ${
-                        row.statut === 'valide' ? 'border-[#e6e6ea] text-[#1F1B2E]' :
-                        row.statut === 'attente' ? 'border-[#f0d98a] bg-[#fff3d6] text-[#9c7218]' :
-                        'border-[#ffb3b3] bg-[#ffe6e6] text-[#C62828]'
-                      }`}>
-                        {row.statut === 'valide' ? 'Voir' : 'Relancer'}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {districts.map(district => {
+                  const sentinelle = sentinelleByDistrict.get(district.id);
+                  const routiers = gardiensByDistrict.get(district.id) ?? 0;
+                  const selected = participantsByDistrict.get(district.id) ?? 0;
+                  return (
+                    <tr key={district.id} className="border-b border-[#f0f0f4] hover:bg-[#fafafc]">
+                      <td className="px-3 py-3 font-semibold text-[#1F1B2E]">{district.nom}</td>
+                      <td className="px-3 py-3 text-[#6b6b78]">
+                        {sentinelle ? `${sentinelle.prenoms} ${sentinelle.nom}` : '—'}
+                      </td>
+                      <td className="px-3 py-3 text-center text-[#6b6b78]">{district._count?.parishes ?? 0}</td>
+                      <td className="px-3 py-3 text-center text-[#6b6b78]">{routiers}</td>
+                      <td className="px-3 py-3">
+                        <div className="font-semibold text-[#1F1B2E] mb-1">{selected} / {routiers}</div>
+                        <Progress value={selected} max={routiers} />
+                      </td>
+                      <td className="px-3 py-3">
+                        {selected > 0 ? <Pill variant="vert">✓ Transmis</Pill> : <Pill variant="or">⏳ En attente</Pill>}
+                      </td>
+                      <td className="px-3 py-3">
+                        <button className="text-[11px] border border-[#e6e6ea] text-[#1F1B2E] rounded-lg px-2.5 py-1 font-semibold">
+                          Voir
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
 
+          {/* Messages récents */}
+          {conversations.length > 0 && (
+            <div className="bg-white border border-[#ececf0] rounded-2xl p-4 mb-5">
+              <h3 className="font-bold text-sm text-[#1F1B2E] mb-4 flex justify-between">
+                💬 Messages récents
+                <Link href="/messages" className="text-xs text-[#C62828] font-semibold">Tout voir →</Link>
+              </h3>
+              <div className="flex flex-col gap-2">
+                {conversations.slice(0, 5).map(conv => {
+                  const lastMsg = conv.messages?.[0];
+                  const ICON: Record<string, string> = { COMMUNAUTE: '🌍', REGION: '🗺️', DOYENNE: '🛡️', PAROISSE: '⛪', PRIVE: '🤝', GROUPE: '👥' };
+                  const GRADIENT: Record<string, string> = {
+                    COMMUNAUTE: 'from-[#F58A4B] to-[#C62828]', REGION: 'from-[#F58A4B] to-[#C62828]',
+                    DOYENNE: 'from-[#6A1B9A] to-[#3d1163]', PAROISSE: 'from-[#C62828] to-[#7a1717]',
+                    PRIVE: 'from-[#1F1B2E] to-[#3a1d4d]', GROUPE: 'from-[#2E7D32] to-[#1a5021]',
+                  };
+                  const timeStr = conv.lastMessageAt
+                    ? new Date(conv.lastMessageAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+                    : '';
+                  return (
+                    <Link key={conv.id} href={`/messages/${conv.id}`}
+                      className="flex items-center gap-3 py-2 border-b border-[#f0f0f4] last:border-0 hover:bg-[#fafafc] px-1 rounded-lg transition-colors">
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm text-white bg-gradient-to-br ${GRADIENT[conv.type] ?? 'from-[#6A1B9A] to-[#3d1163]'} flex-shrink-0`}>
+                        {ICON[conv.type] ?? '💬'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-center gap-2">
+                          <span className="font-semibold text-sm text-[#1F1B2E] truncate">{conv.nom ?? 'Conversation'}</span>
+                          {timeStr && <span className="text-[10px] text-[#6b6b78] flex-shrink-0">{timeStr}</span>}
+                        </div>
+                        <p className="text-xs text-[#6b6b78] truncate">{lastMsg?.contenu ?? 'Aucun message'}</p>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Bottom charts */}
           <div className="grid grid-cols-2 gap-4">
-            {/* Bar chart */}
             <div className="bg-white border border-[#ececf0] rounded-2xl p-4">
-              <h3 className="font-bold text-sm text-[#1F1B2E] mb-4">Activité du Mur du Codex (7 jours)</h3>
-              <div className="flex items-end gap-2 h-32">
-                {[8, 14, 11, 19, 16, 23, 12].map((v, i) => (
-                  <div key={i} className="flex-1 flex flex-col items-center justify-end gap-1">
-                    <span className="text-[10px] font-bold text-[#1F1B2E]">{v}</span>
-                    <div className="w-full rounded-t-md"
-                      style={{ height: `${(v / 23) * 100}%`, background: 'linear-gradient(180deg,#FFB36B,#E55A35)' }} />
-                    <span className="text-[10px] text-[#6b6b78]">{['L','M','M','J','V','S','D'][i]}</span>
+              <h3 className="font-bold text-sm text-[#1F1B2E] mb-4">Camps ouverts</h3>
+              <div className="flex flex-col gap-2">
+                {camps.slice(0, 5).map(camp => (
+                  <div key={camp.id} className="py-2 border-b border-[#f0f0f4] last:border-0">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-[#1F1B2E] font-semibold">{camp.nom}</span>
+                      <span className="text-[#6b6b78]">{camp._count?.participants ?? 0}</span>
+                    </div>
+                    <Progress value={camp._count?.participants ?? 0} max={maxCampParticipants} />
                   </div>
                 ))}
+                {camps.length === 0 && <p className="text-xs text-[#6b6b78]">Aucun camp ouvert.</p>}
               </div>
             </div>
 
-            {/* Top défis */}
             <div className="bg-white border border-[#ececf0] rounded-2xl p-4">
-              <h3 className="font-bold text-sm text-[#1F1B2E] mb-4">Top défis validés ce mois</h3>
+              <h3 className="font-bold text-sm text-[#1F1B2E] mb-4">Défis les plus soumis</h3>
               <div className="flex flex-col gap-2">
-                {[
-                  { titre: '🌱 Planter une graine', count: 48 },
-                  { titre: '🧹 Nettoyer une paroisse', count: 32 },
-                  { titre: '🙏 Prière du Gardien', count: 28 },
-                  { titre: '🚰 Réduire l\'eau', count: 22 },
-                  { titre: '🌿 21 jours de Gardien', count: 14 },
-                ].map(d => (
-                  <div key={d.titre} className="flex justify-between items-center py-2 border-b border-[#f0f0f4] last:border-0 text-sm">
-                    <span className="text-[#1F1B2E]">{d.titre}</span>
-                    <Pill variant="rouge">{d.count}</Pill>
+                {topChallenges.map(challenge => (
+                  <div key={challenge.id} className="flex justify-between items-center py-2 border-b border-[#f0f0f4] last:border-0 text-sm">
+                    <span className="text-[#1F1B2E]">{challenge.titre}</span>
+                    <Pill variant="rouge">{challenge._count?.submissions ?? 0}</Pill>
                   </div>
                 ))}
+                {topChallenges.length === 0 && <p className="text-xs text-[#6b6b78]">Aucun défi soumis.</p>}
               </div>
             </div>
           </div>
