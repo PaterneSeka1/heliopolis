@@ -1,11 +1,11 @@
 import type { User, UserRole } from '@/types';
 
 export const ROLE_HOME: Record<UserRole, string> = {
-  ADMIN: '/admin',
-  REGION: '/region',
-  SENTINELLE: '/guide',
-  GUIDE: '/guide',
-  GARDIEN: '/dashboard',
+  ADMIN: '/dashboard/admin',
+  REGION: '/dashboard/region',
+  SENTINELLE: '/dashboard/guide',
+  GUIDE: '/dashboard/guide',
+  GARDIEN: '/dashboard/gardien',
 };
 
 export const ROLE_LABEL: Record<UserRole, string> = {

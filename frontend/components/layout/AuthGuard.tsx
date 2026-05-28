@@ -27,6 +27,7 @@ export function AuthGuard({ children, roles }: AuthGuardProps) {
           : null;
 
       if (!token) {
+        logout();
         router.replace('/activation');
         setChecking(false);
         return;

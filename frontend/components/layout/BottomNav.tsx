@@ -14,18 +14,18 @@ const GUEST_ITEMS: NavItem[] = [
 ];
 
 const GARDIEN_ITEMS: NavItem[] = [
-  { href: '/dashboard', icon: '🤝', label: 'Profil' },
-  { href: '/missions', icon: '🎯', label: 'Missions' },
-  { href: '/messages', icon: '💬', label: 'Messages' },
-  { href: '/codex', icon: '🪶', label: 'Codex' },
-  { href: '/artefacts', icon: '🏅', label: 'Artefacts' },
+  { href: '/dashboard/gardien', icon: '🤝', label: 'Accueil' },
+  { href: '/dashboard/gardien/camps', icon: '⛺', label: 'Camps' },
+  { href: '/dashboard/gardien/missions', icon: '🎯', label: 'Missions' },
+  { href: '/dashboard/gardien/messages', icon: '💬', label: 'Messages' },
+  { href: '/dashboard/gardien/codex', icon: '🪶', label: 'Codex' },
 ];
 
 const GUIDE_BASE_ITEMS: NavItem[] = [
-  { href: '/guide', icon: '📖', label: 'Guide' },
-  { href: '/camps', icon: '⛺', label: 'Camps' },
-  { href: '/messages', icon: '💬', label: 'Messages' },
-  { href: '/codex', icon: '🪶', label: 'Codex' },
+  { href: '/dashboard/guide', icon: '📖', label: 'Accueil' },
+  { href: '/dashboard/guide/camps', icon: '⛺', label: 'Camps' },
+  { href: '/dashboard/guide/messages', icon: '💬', label: 'Messages' },
+  { href: '/dashboard/guide/codex', icon: '🪶', label: 'Codex' },
 ];
 
 export function BottomNav({ variant = 'guest' }: { variant?: 'guest' | 'gardien' | 'guide' }) {
@@ -35,9 +35,9 @@ export function BottomNav({ variant = 'guest' }: { variant?: 'guest' | 'gardien'
     variant === 'gardien' && isManagementRole(user?.role) ? 'guide' : variant;
   const guideItems =
     user?.role === 'ADMIN' || user?.role === 'REGION'
-      ? [...GUIDE_BASE_ITEMS, { href: '/region', icon: '📊', label: 'Region' }]
+      ? [...GUIDE_BASE_ITEMS, { href: '/dashboard/region', icon: '📊', label: 'Region' }]
       : user?.role === 'SENTINELLE'
-        ? [...GUIDE_BASE_ITEMS, { href: '/admin/export', icon: '📤', label: 'Export' }]
+        ? [...GUIDE_BASE_ITEMS, { href: '/dashboard/admin/export', icon: '📤', label: 'Export' }]
         : [...GUIDE_BASE_ITEMS, { href: '/', icon: '🏠', label: 'Accueil' }];
   const items =
     effectiveVariant === 'guest'

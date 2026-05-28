@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaClient } from '../../generated/prisma/client.js';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
 
 function formatDatabaseTarget(connectionString: string | undefined) {
   if (!connectionString) return 'DATABASE_URL absent';
@@ -23,14 +24,29 @@ export class PrismaService
   implements OnModuleInit, OnModuleDestroy
 {
   private static readonly logger = new Logger(PrismaService.name);
+  private readonly pool: Pool;
 
   constructor() {
     const connectionString = process.env.DATABASE_URL;
     if (!connectionString) {
       throw new Error('DATABASE_URL est requis pour initialiser Prisma.');
     }
-    const adapter = new PrismaPg({ connectionString });
+
+    const pool = new Pool({
+      connectionString,
+      max: 10,
+      idleTimeoutMillis: 30_000,
+      connectionTimeoutMillis: 5_000,
+    });
+
+    // Absorbe les erreurs de connexion idle pour éviter les crash non gérés
+    pool.on('error', (err) => {
+      PrismaService.logger.warn(`pg pool error (ignoré) : ${err.message}`);
+    });
+
+    const adapter = new PrismaPg(pool);
     super({ adapter });
+    this.pool = pool;
   }
 
   async onModuleInit() {
@@ -48,5 +64,6 @@ export class PrismaService
 
   async onModuleDestroy() {
     await this.$disconnect();
+    await this.pool.end();
   }
 }

@@ -18,7 +18,7 @@ export function CampAuthCTA({ campId }: { campId: string }) {
           </div>
         </div>
         <Link
-          href={`/guide/selection/${campId}`}
+          href={`/dashboard/guide/selection/${campId}`}
           className="block w-full text-center bg-[#6A1B9A] text-white font-bold text-sm py-3.5 rounded-xl mb-2"
         >
           📋 Sélectionner des participants
@@ -42,7 +42,7 @@ export function CampAuthCTA({ campId }: { campId: string }) {
           </div>
         </div>
         <Link
-          href="/messages"
+          href="/dashboard/gardien/messages"
           className="block w-full text-center bg-[#C62828] text-white font-bold text-sm py-3.5 rounded-xl mb-2"
         >
           💬 Contacter mon Guide

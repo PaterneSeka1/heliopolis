@@ -17,10 +17,10 @@ const TYPE_LABELS: Record<string, string> = {
   PAROISSIAL: 'Paroissial', NATIONAL: 'National', COMMUNAUTE: 'Communauté',
 };
 
-export function CampCard({ camp }: { camp: Camp }) {
+export function CampCard({ camp, href }: { camp: Camp; href?: string }) {
   const status = STATUS_LABELS[camp.statut];
   return (
-    <Link href={`/camps/${camp.id}`} className="block rounded-2xl overflow-hidden bg-white shadow-sm border border-[#ececf0] mb-3.5 active:scale-[.98] transition-transform">
+    <Link href={href ?? `/camps/${camp.id}`} className="block rounded-2xl overflow-hidden bg-white shadow-sm border border-[#ececf0] mb-3.5 active:scale-[.98] transition-transform">
       {/* Hero image */}
       <div className="h-28 relative overflow-hidden"
         style={{ background: 'linear-gradient(180deg,#FFB36B 0%,#F58A4B 50%,#7A2820 100%)' }}>
