@@ -61,27 +61,31 @@ export default function DashboardAdminPage() {
           Camps actifs
         </SectionTitle>
         {activeCamps.map(camp => (
-          <Card key={camp.id} className="mb-2.5">
-            <div className="flex justify-between items-start mb-2">
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-sm text-[#1F1B2E] truncate">{camp.nom}</div>
-                <div className="text-xs text-[#6b6b78] mt-0.5">{camp.lieu} · {camp.type}</div>
+          <Link key={camp.id} href="/dashboard/admin/camps">
+            <Card className="mb-2.5 hover:border-[#6A1B9A]/30 transition-colors cursor-pointer">
+              <div className="flex justify-between items-start mb-2">
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-sm text-[#1F1B2E] truncate">{camp.nom}</div>
+                  <div className="text-xs text-[#6b6b78] mt-0.5">{camp.lieu} · {camp.type}</div>
+                </div>
+                <Pill variant={camp.statut === 'OUVERT' ? 'vert' : 'or'} solid className="flex-shrink-0 ml-2">
+                  {camp.statut === 'OUVERT' ? '✓ Ouvert' : '▶ En cours'}
+                </Pill>
               </div>
-              <Pill variant={camp.statut === 'OUVERT' ? 'vert' : 'or'} solid className="flex-shrink-0 ml-2">
-                {camp.statut === 'OUVERT' ? '✓ Ouvert' : '▶ En cours'}
-              </Pill>
-            </div>
-            <div className="flex justify-between text-xs text-[#6b6b78] mb-1.5">
-              <span>Participants</span>
-              <span className="font-semibold text-[#1F1B2E]">{camp._count?.participants ?? 0}</span>
-            </div>
-            <Progress value={camp._count?.participants ?? 0} max={maxParticipants} />
-          </Card>
+              <div className="flex justify-between text-xs text-[#6b6b78] mb-1.5">
+                <span>Participants</span>
+                <span className="font-semibold text-[#1F1B2E]">{camp._count?.participants ?? 0}</span>
+              </div>
+              <Progress value={camp._count?.participants ?? 0} max={maxParticipants} />
+            </Card>
+          </Link>
         ))}
 
         {pending.length > 0 && (
           <>
-            <SectionTitle>🪶 À modérer ({pending.length})</SectionTitle>
+            <SectionTitle action={<Link href="/dashboard/admin/codex" className="text-xs text-[#C62828] font-semibold">Tout voir →</Link>}>
+              🪶 À modérer ({pending.length})
+            </SectionTitle>
             {pending.slice(0, 3).map(sub => (
               <Card key={sub.id} className="mb-2.5">
                 <div className="flex items-center gap-2.5">
@@ -134,6 +138,21 @@ export default function DashboardAdminPage() {
             })}
           </>
         )}
+
+        <SectionTitle>Accès rapide</SectionTitle>
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          {[
+            { icon: '⛺', label: 'Camps', href: '/dashboard/admin/camps', color: '#D9A441' },
+            { icon: '🪶', label: 'Codex', href: '/dashboard/admin/codex', color: '#6A1B9A' },
+            { icon: '📊', label: 'Région', href: '/dashboard/region', color: '#C62828' },
+          ].map(item => (
+            <Link key={item.href} href={item.href}
+              className="flex flex-col items-center gap-1.5 bg-white border border-[#ececf0] rounded-2xl py-3.5 hover:border-[#6A1B9A]/30 transition-colors">
+              <span className="text-2xl">{item.icon}</span>
+              <span className="text-[11px] font-semibold text-[#1F1B2E]">{item.label}</span>
+            </Link>
+          ))}
+        </div>
 
         <div className="flex gap-2 mt-4">
           <Link href="/dashboard/admin/camps/nouveau" className="flex-1 text-center bg-[#C62828] text-white font-bold text-sm py-3.5 rounded-xl">

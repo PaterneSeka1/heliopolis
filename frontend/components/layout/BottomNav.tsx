@@ -28,7 +28,15 @@ const GUIDE_BASE_ITEMS: NavItem[] = [
   { href: '/dashboard/guide/codex', icon: '🪶', label: 'Codex' },
 ];
 
-export function BottomNav({ variant = 'guest' }: { variant?: 'guest' | 'gardien' | 'guide' }) {
+const ADMIN_ITEMS: NavItem[] = [
+  { href: '/dashboard/admin', icon: '🏠', label: 'Accueil' },
+  { href: '/dashboard/admin/camps', icon: '⛺', label: 'Camps' },
+  { href: '/dashboard/admin/codex', icon: '🪶', label: 'Codex' },
+  { href: '/dashboard/admin/messages', icon: '💬', label: 'Messages' },
+  { href: '/dashboard/region', icon: '📊', label: 'Vue rég.' },
+];
+
+export function BottomNav({ variant = 'guest' }: { variant?: 'guest' | 'gardien' | 'guide' | 'admin' }) {
   const pathname = usePathname();
   const { user } = useAuthStore();
   const effectiveVariant =
@@ -42,9 +50,11 @@ export function BottomNav({ variant = 'guest' }: { variant?: 'guest' | 'gardien'
   const items =
     effectiveVariant === 'guest'
       ? GUEST_ITEMS
-      : effectiveVariant === 'guide'
-        ? guideItems
-        : GARDIEN_ITEMS;
+      : effectiveVariant === 'admin'
+        ? ADMIN_ITEMS
+        : effectiveVariant === 'guide'
+          ? guideItems
+          : GARDIEN_ITEMS;
 
   return (
     <nav className="flex-shrink-0 bg-white border-t border-[#e6e6ea] flex justify-around pb-safe">

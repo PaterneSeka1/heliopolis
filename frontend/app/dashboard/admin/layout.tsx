@@ -7,7 +7,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <AuthGuard roles={['ADMIN', 'REGION']}>
       <div className="flex flex-col h-screen max-w-md mx-auto overflow-hidden">
         <main className="flex-1 flex flex-col overflow-hidden">{children}</main>
-        <BottomNav variant="guide" />
+        <BottomNav variant="admin" />
       </div>
     </AuthGuard>
   );
