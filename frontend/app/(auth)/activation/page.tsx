@@ -65,7 +65,9 @@ export default function ActivationPage() {
       />
 
       <div className="relative z-10 w-full max-w-sm flex flex-col items-center gap-5">
-        <GardiensBlazon size={140} />
+        <div className="rounded-full overflow-hidden shadow-2xl ring-4 ring-white/30 bg-white/10 backdrop-blur-sm">
+          <GardiensBlazon size={180} className="rounded-full" />
+        </div>
         <p
           className="text-xs opacity-90 italic text-center"
           style={{ textShadow: '0 1px 4px rgba(0,0,0,.3)' }}
@@ -110,7 +112,7 @@ export default function ActivationPage() {
             </Button>
             <Button
               variant="ghost"
-              className="bg-transparent text-white border-white/50 hover:bg-white/10"
+              className="bg-transparent text-black border-white/50 hover:bg-white/10"
               onClick={() => setMode('login')}
             >
               Se connecter
@@ -160,7 +162,7 @@ export default function ActivationPage() {
             </Button>
             <Button
               variant="ghost"
-              className="bg-transparent text-white border-white/50 hover:bg-white/10"
+              className="bg-transparent text-black border-white/50 hover:bg-white/10"
               onClick={() => setMode('activate')}
             >
               ‹ Activation matricule

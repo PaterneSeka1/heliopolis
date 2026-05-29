@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import Image from 'next/image';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { LogoutButton } from '@/components/auth/LogoutButton';
@@ -25,9 +26,12 @@ export default function GuideLayout({ children }: { children: React.ReactNode })
 
         {/* ── Sidebar desktop ── */}
         <aside className="hidden lg:flex lg:flex-col w-56 bg-gradient-to-b from-[#6A1B9A] to-[#4a1370] text-white flex-shrink-0">
-          <div className="p-4 border-b border-white/20 flex-shrink-0">
-            <div className="text-base font-bold">📖 Guide</div>
-            <div className="text-[11px] opacity-75 mt-0.5">{user?.parish?.nom ?? user?.district?.nom ?? 'Mon territoire'}</div>
+          <div className="p-4 border-b border-white/20 flex-shrink-0 flex items-center gap-2.5">
+            <Image src="/logo.jpeg" alt="Logo" width={36} height={36} className="object-contain rounded flex-shrink-0" />
+            <div>
+              <div className="text-base font-bold">Guide</div>
+              <div className="text-[11px] opacity-75 mt-0.5">{user?.parish?.nom ?? user?.district?.nom ?? 'Mon territoire'}</div>
+            </div>
           </div>
 
           <nav className="flex-1 p-2 overflow-y-auto">

@@ -5,6 +5,20 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Le Codex des Gardiens — Route en Joie 2026",
   description: "Plateforme de la Communauté Mahatma Gandhi · Région d'Abidjan",
+  openGraph: {
+    title: "Le Codex des Gardiens — Route en Joie 2026",
+    description: "Plateforme de la Communauté Mahatma Gandhi · Région d'Abidjan",
+    siteName: "Codex des Gardiens",
+    locale: 'fr_FR',
+    type: 'website',
+    images: [{ url: '/logo.jpeg' }],
+  },
+  twitter: {
+    card: 'summary',
+    title: "Le Codex des Gardiens — Route en Joie 2026",
+    description: "Plateforme de la Communauté Mahatma Gandhi · Région d'Abidjan",
+    images: ['/logo.jpeg'],
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

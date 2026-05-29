@@ -4,8 +4,7 @@ import Link from 'next/link';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { AdminMobileNav } from '@/components/layout/AdminMobileNav';
 import { AdminRegionSidebar } from '@/components/layout/AdminRegionSidebar';
-import { GardiensBlazon } from '@/components/layout/GardiensBlazon';
-import { LogoutButton } from '@/components/auth/LogoutButton';
+// import { LogoutButton } from '@/components/auth/LogoutButton';
 import { useAuthStore } from '@/store/auth';
 
 const MOBILE_NAV = [

@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { useAuthStore } from '@/store/auth';
 import { getHomeForRole } from '@/lib/roles';
 import { authApi } from '@/lib/api';
@@ -64,7 +65,7 @@ export function AuthGuard({ children, roles }: AuthGuardProps) {
   if (checking || !user) return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="text-center">
-        <div className="text-4xl mb-3">🛡️</div>
+        <Image src="/logo.jpeg" alt="Logo" width={64} height={64} className="object-contain mx-auto mb-3" />
         <p className="text-sm text-[#6b6b78]">Vérification…</p>
       </div>
     </div>
