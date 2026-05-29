@@ -68,6 +68,39 @@ export class UsersService {
     if (dto.role === UserRole.ADMIN) {
       throw new ForbiddenException('Création administrateur réservée');
     }
+
+    // SENTINELLE ne peut créer que des guides dans son doyenné
+    if (actor.role === UserRole.SENTINELLE) {
+      if (dto.role && dto.role !== UserRole.GUIDE) {
+        throw new ForbiddenException('Une sentinelle ne peut créer que des guides');
+      }
+      if (!actor.districtId) {
+        throw new ForbiddenException('Aucun doyenné rattaché à ce compte');
+      }
+      if (dto.parishId) {
+        const parish = await this.prisma.parish.findUnique({
+          where: { id: dto.parishId },
+          select: { districtId: true },
+        });
+        if (!parish || parish.districtId !== actor.districtId) {
+          throw new ForbiddenException('Paroisse hors périmètre du doyenné');
+        }
+      }
+      return;
+    }
+
+    // GUIDE ne peut créer que des gardiens dans sa paroisse
+    if (actor.role === UserRole.GUIDE) {
+      if (dto.role && dto.role !== UserRole.GARDIEN) {
+        throw new ForbiddenException('Un guide ne peut créer que des gardiens');
+      }
+      if (!actor.parishId) {
+        throw new ForbiddenException('Aucune paroisse rattachée à ce compte');
+      }
+      return;
+    }
+
+    // REGION : vérification du périmètre régional
     if (!actor.regionId) {
       throw new ForbiddenException('Aucune région rattachée à ce compte');
     }
@@ -168,6 +201,14 @@ export class UsersService {
     const passwordHash = dto.password
       ? await bcrypt.hash(dto.password, 12)
       : undefined;
+
+    // Rôle par défaut selon le créateur si non spécifié
+    const resolvedRole = dto.role ?? (
+      actor.role === UserRole.GUIDE ? UserRole.GARDIEN :
+      actor.role === UserRole.SENTINELLE ? UserRole.GUIDE :
+      UserRole.GARDIEN
+    );
+
     return this.prisma.user.create({
       data: {
         nom: dto.nom,
@@ -176,16 +217,47 @@ export class UsersService {
         email: dto.email,
         telephone: dto.telephone,
         passwordHash,
-        role: dto.role,
+        role: resolvedRole,
         dateNaissance: dto.dateNaissance
           ? new Date(dto.dateNaissance)
           : undefined,
         regionId: dto.regionId ?? actor.regionId,
-        districtId: dto.districtId,
-        parishId: dto.parishId,
+        districtId: dto.districtId ?? actor.districtId,
+        parishId: dto.parishId ?? actor.parishId,
         statutProfil: ProfileStatus.ACTIF,
       },
       select: this.userSelect,
+    });
+  }
+
+  async updateStatut(id: string, statut: ProfileStatus, actor: AuthUser) {
+    await this.findOne(id, actor);
+    return this.prisma.user.update({
+      where: { id },
+      data: { statutProfil: statut },
+      select: this.userSelect,
+    });
+  }
+
+  async updateMe(userId: string, dto: { nom?: string; prenoms?: string; email?: string; telephone?: string }) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(dto.nom && { nom: dto.nom }),
+        ...(dto.prenoms && { prenoms: dto.prenoms }),
+        email: dto.email ?? undefined,
+        telephone: dto.telephone ?? undefined,
+      },
+      select: this.userSelect,
+    });
+  }
+
+  async updateAvatar(userId: string, filename: string) {
+    const avatarUrl = `/uploads/avatars/${filename}`;
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { avatarUrl },
+      select: { id: true, avatarUrl: true },
     });
   }
 
@@ -215,6 +287,7 @@ export class UsersService {
     annee: number,
     statut: AdhesionStatus,
     validateurId: string,
+    preuveUrl?: string,
   ) {
     const validateur = await this.prisma.user.findUnique({
       where: { id: validateurId },
@@ -229,11 +302,13 @@ export class UsersService {
         statut,
         validateurId,
         dateValidation: new Date(),
+        ...(preuveUrl !== undefined && { preuveUrl }),
       },
       update: {
         statut,
         validateurId,
         dateValidation: new Date(),
+        ...(preuveUrl !== undefined && { preuveUrl }),
       },
     });
   }

@@ -1,15 +1,20 @@
 'use client';
+import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { AdminMobileNav } from '@/components/layout/AdminMobileNav';
 import { AdminRegionSidebar } from '@/components/layout/AdminRegionSidebar';
-// import { LogoutButton } from '@/components/auth/LogoutButton';
+import { ProfileModal } from '@/components/profile/ProfileModal';
+import { UserAvatar } from '@/components/profile/UserAvatar';
 import { useAuthStore } from '@/store/auth';
 
 const MOBILE_NAV = [
   { icon: '⛺', label: 'Camps',        href: '/dashboard/admin/camps' },
   { icon: '👥', label: 'Participants', href: '/dashboard/admin/participants' },
+  { icon: '🤝', label: 'Gardiens',       href: '/dashboard/admin/gardiens' },
+  { icon: '📖', label: 'Encadrants',    href: '/dashboard/admin/guides' },
+  { icon: '🌍', label: 'Membres rég.',  href: '/dashboard/admin/region' },
   { icon: '🛡️', label: 'Doyennés',    href: '/dashboard/admin/doyennes' },
   { icon: '⛪', label: 'Paroisses',    href: '/dashboard/admin/paroisses' },
   { icon: '🎯', label: 'Défis',        href: '/dashboard/admin/defis' },
@@ -20,6 +25,7 @@ const MOBILE_NAV = [
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user } = useAuthStore();
+  const [profileOpen, setProfileOpen] = useState(false);
 
   const currentSection = MOBILE_NAV.find(item =>
     item.href === '/dashboard/region'
@@ -32,7 +38,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div className="flex h-screen overflow-hidden bg-[#f6f6fa]">
 
         {/* Sidebar desktop — partagée avec région */}
-        <AdminRegionSidebar />
+        <AdminRegionSidebar onProfileClick={() => setProfileOpen(true)} />
 
         {/* Contenu principal */}
         <div className="flex flex-col flex-1 overflow-hidden min-w-0">
@@ -55,11 +61,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     : '🛡️ Administration'}
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold">
-                {user ? `${user.nom[0]}${user.prenoms[0]}` : '?'}
-              </div>
-            </div>
+            <button
+              onClick={() => setProfileOpen(true)}
+              className="rounded-full hover:ring-2 hover:ring-white/50 transition-all flex-shrink-0"
+              title="Mon profil"
+            >
+              <UserAvatar
+                avatarUrl={user?.avatarUrl}
+                initials={user ? `${user.nom[0]}${user.prenoms[0]}` : '?'}
+                sizeClass="w-8 h-8"
+              />
+            </button>
           </div>
 
           <main className="flex-1 flex flex-col overflow-hidden">{children}</main>
@@ -71,6 +83,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         </div>
       </div>
+
+      <ProfileModal isOpen={profileOpen} onClose={() => setProfileOpen(false)} />
     </AuthGuard>
   );
 }

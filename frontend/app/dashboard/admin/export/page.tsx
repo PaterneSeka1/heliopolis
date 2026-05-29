@@ -1,15 +1,46 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { campsApi, exportApi } from '@/lib/api';
-import { Select, InfoBanner } from '@/components/ui';
-import type { Camp, CampParticipant } from '@/types';
+import { Select } from '@/components/ui';
+import type { Camp, CampParticipant, AdhesionStatus, ParticipationStatus } from '@/types';
+
+const ADHESION_LABELS: Record<AdhesionStatus, string> = {
+  A_JOUR:    'À jour',
+  NON_A_JOUR: 'Non à jour',
+  EN_ATTENTE: 'En attente',
+};
+const ADHESION_COLOR: Record<AdhesionStatus, string> = {
+  A_JOUR:    'bg-green-100 text-green-700',
+  NON_A_JOUR: 'bg-amber-100 text-amber-700',
+  EN_ATTENTE: 'bg-purple-100 text-purple-700',
+};
+
+const PARTICIPATION_LABELS: Record<ParticipationStatus, string> = {
+  SELECTIONNE:     'Sélectionné',
+  CONFIRME:        'Confirmé',
+  PRESENT:         'Présent',
+  ABSENT:          'Absent',
+  DESISTE:         'Désisté',
+  NON_SELECTIONNE: 'Non sélectionné',
+  EN_ATTENTE:      'En attente',
+};
+const PARTICIPATION_COLOR: Record<ParticipationStatus, string> = {
+  SELECTIONNE:     'bg-blue-100 text-blue-700',
+  CONFIRME:        'bg-green-100 text-green-700',
+  PRESENT:         'bg-green-100 text-green-700',
+  ABSENT:          'bg-red-100 text-red-700',
+  DESISTE:         'bg-red-100 text-red-700',
+  NON_SELECTIONNE: 'bg-gray-100 text-gray-500',
+  EN_ATTENTE:      'bg-amber-100 text-amber-700',
+};
 
 export default function ExportPage() {
-  const [camps, setCamps] = useState<Camp[]>([]);
-  const [campId, setCampId] = useState('');
-  const [participants, setParticipants] = useState<CampParticipant[]>([]);
+  const [camps, setCamps]       = useState<Camp[]>([]);
+  const [campId, setCampId]     = useState('');
+  const [participants, setParticipants]             = useState<CampParticipant[]>([]);
   const [participantsCampId, setParticipantsCampId] = useState('');
-  const [downloading, setDownloading] = useState(false);
+  const [loadingParts, setLoadingParts] = useState(false);
+  const [downloading, setDownloading]   = useState(false);
 
   useEffect(() => {
     campsApi.list().then(r => {
@@ -19,11 +50,9 @@ export default function ExportPage() {
   }, []);
 
   useEffect(() => {
-    if (!campId) {
-      return;
-    }
-
+    if (!campId) return;
     let cancelled = false;
+    setLoadingParts(true);
     campsApi.participants(campId)
       .then(r => {
         if (cancelled) return;
@@ -34,13 +63,14 @@ export default function ExportPage() {
         if (cancelled) return;
         setParticipants([]);
         setParticipantsCampId(campId);
-      });
-    return () => {
-      cancelled = true;
-    };
+      })
+      .finally(() => { if (!cancelled) setLoadingParts(false); });
+    return () => { cancelled = true; };
   }, [campId]);
 
-  const visibleParticipants = participantsCampId === campId ? participants : [];
+  const selectedCamp  = camps.find(c => c.id === campId);
+  const preview       = participantsCampId === campId ? participants : [];
+  const previewReady  = participantsCampId === campId && !loadingParts;
 
   const handleDownload = async () => {
     if (!campId) return;
@@ -50,7 +80,7 @@ export default function ExportPage() {
       const href = URL.createObjectURL(data);
       const link = document.createElement('a');
       link.href = href;
-      link.download = `participants-${campId}.xlsx`;
+      link.download = `participants-${selectedCamp?.nom ?? campId}.xlsx`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -62,87 +92,132 @@ export default function ExportPage() {
 
   return (
     <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 lg:p-6">
-      <div className="flex justify-between items-center mb-5 border-b border-[#ececf0] pb-4">
+
+      {/* En-tête */}
+      <div className="flex items-center justify-between mb-6 border-b border-[#ececf0] pb-4">
         <div>
           <h1 className="text-xl lg:text-2xl font-black text-[#1F1B2E]">📤 Export Excel</h1>
-          <p className="text-xs text-[#6b6b78] mt-0.5">Liste des participants par camp</p>
+          <p className="text-xs text-[#6b6b78] mt-0.5">Exporter la liste des participants par camp</p>
         </div>
       </div>
 
-      <div>
-        <div className="lg:max-w-3xl lg:mx-auto">
-        <InfoBanner icon="📋">
-          L&apos;export est <strong>limité à ton périmètre</strong>. Aucun montant de cotisation n&apos;est exporté.
-        </InfoBanner>
+      <div className="flex flex-col lg:flex-row gap-5 h-full">
 
-        <div className="mb-4">
-          <label className="block text-xs font-semibold text-[#1F1B2E] mb-1.5">Camp</label>
-          <Select value={campId} onChange={e => setCampId(e.target.value)}>
-            {camps.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
-            {camps.length === 0 && <option value="">Aucun camp disponible</option>}
-          </Select>
+        {/* ── Colonne gauche : contrôles ── */}
+        <div className="flex flex-col gap-4 lg:w-72 flex-shrink-0">
+
+          {/* Sélection du camp */}
+          <div className="bg-white border border-[#ececf0] rounded-2xl p-5">
+            <label className="block text-xs font-semibold text-[#1F1B2E] mb-2">Camp</label>
+            <Select value={campId} onChange={e => setCampId(e.target.value)} className="w-full">
+              {camps.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
+              {camps.length === 0 && <option value="">Aucun camp disponible</option>}
+            </Select>
+          </div>
+
+          {/* Stats du camp sélectionné */}
+          {previewReady && preview.length > 0 && (
+            <div className="bg-white border border-[#ececf0] rounded-2xl p-5 space-y-3">
+              <p className="text-xs font-semibold text-[#1F1B2E]">Résumé</p>
+              {[
+                { label: 'Total participants', value: preview.length, color: '#1F1B2E' },
+                { label: 'Adhésions à jour', value: preview.filter(p => p.adhesionStatusSnapshot === 'A_JOUR').length, color: '#2E7D32' },
+                { label: 'Non à jour', value: preview.filter(p => p.adhesionStatusSnapshot === 'NON_A_JOUR').length, color: '#C62828' },
+              ].map(s => (
+                <div key={s.label} className="flex justify-between items-center text-xs">
+                  <span className="text-[#6b6b78]">{s.label}</span>
+                  <span className="font-black text-base" style={{ color: s.color }}>{s.value}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Note */}
+          <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+            <p className="text-[11px] text-amber-700 leading-relaxed">
+              ℹ️ Export limité à votre périmètre.<br />
+              Aucun montant de cotisation n&apos;est exporté.
+            </p>
+          </div>
+
+          {/* Bouton */}
+          <button
+            type="button"
+            onClick={handleDownload}
+            disabled={!campId || downloading || !previewReady}
+            className="w-full flex items-center justify-center gap-2 bg-[#1F1B2E] text-white font-bold text-sm py-3 rounded-xl hover:bg-[#2d2640] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {downloading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Téléchargement…
+              </>
+            ) : '📥 Télécharger .xlsx'}
+          </button>
+          {selectedCamp && previewReady && (
+            <p className="text-[11px] text-[#6b6b78] text-center -mt-2 truncate">{selectedCamp.nom}</p>
+          )}
         </div>
 
-        <div className="text-xs font-semibold text-[#1F1B2E] mb-2">Aperçu (5 premières lignes)</div>
-        <div className="bg-white border border-[#ececf0] rounded-2xl overflow-hidden mb-4">
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs min-w-[480px]">
-              <thead>
-                <tr className="bg-[#6A1B9A] text-white text-left">
-                  {['N°', 'Nom', 'Matricule', 'Paroisse', 'Adhésion', 'Statut'].map(h => (
-                    <th key={h} className="px-3 py-2.5 font-semibold">{h}</th>
+        {/* ── Colonne droite : aperçu ── */}
+        <div className="flex-1 min-w-0 bg-white border border-[#ececf0] rounded-2xl overflow-hidden flex flex-col">
+          <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#f0f0f4] flex-shrink-0">
+            <span className="text-sm font-bold text-[#1F1B2E]">Aperçu</span>
+            {previewReady && (
+              <span className="text-xs text-[#6b6b78]">
+                5 premières lignes sur {preview.length}
+              </span>
+            )}
+          </div>
+
+          <div className="overflow-auto flex-1">
+            <table className="w-full text-xs">
+              <thead className="sticky top-0">
+                <tr className="bg-[#f9f9fc] text-[#6b6b78] uppercase tracking-wide">
+                  {['N°', 'Nom', 'Matricule', 'Paroisse', 'Doyenné', 'Adhésion', 'Statut'].map(h => (
+                    <th key={h} className="text-left px-4 py-3 font-semibold border-b border-[#ececf0] whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {visibleParticipants.slice(0, 5).map((p, index) => (
-                  <tr key={p.id} className="border-t border-[#f0f0f4] hover:bg-[#fafafc]">
-                    <td className="px-3 py-2.5 text-[#6b6b78]">{index + 1}</td>
-                    <td className="px-3 py-2.5 font-medium text-[#1F1B2E]">{p.user.prenoms} {p.user.nom}</td>
-                    <td className="px-3 py-2.5 font-mono text-[#6b6b78]">{p.user.matricule ?? '—'}</td>
-                    <td className="px-3 py-2.5 text-[#6b6b78]">{p.parish.nom}</td>
-                    <td className="px-3 py-2.5">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                        p.adhesionStatusSnapshot === 'A_JOUR' ? 'bg-[#e1f4e3] text-[#2E7D32]' :
-                        p.adhesionStatusSnapshot === 'NON_A_JOUR' ? 'bg-[#fff3d6] text-[#9c7218]' :
-                        'bg-[#f0e3ff] text-[#6A1B9A]'
-                      }`}>{p.adhesionStatusSnapshot}</span>
-                    </td>
-                    <td className="px-3 py-2.5 text-[#6b6b78]">{p.participationStatus}</td>
-                  </tr>
-                ))}
-                {participantsCampId === campId && visibleParticipants.length === 0 && (
+                {!previewReady && (
                   <tr>
-                    <td colSpan={6} className="px-3 py-6 text-center text-[#6b6b78]">
+                    <td colSpan={7} className="px-4 py-10 text-center text-[#6b6b78]">
+                      <div className="inline-block w-5 h-5 border-2 border-[#ececf0] border-t-[#C62828] rounded-full animate-spin" />
+                    </td>
+                  </tr>
+                )}
+                {previewReady && preview.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-10 text-center text-[#6b6b78]">
                       Aucun participant sélectionné pour ce camp.
                     </td>
                   </tr>
                 )}
-                {participantsCampId !== campId && (
-                  <tr>
-                    <td colSpan={6} className="px-3 py-6 text-center text-[#6b6b78]">
-                      Chargement…
+                {previewReady && preview.slice(0, 5).map((p, i) => (
+                  <tr key={p.id} className="border-b border-[#f0f0f4] hover:bg-[#fafafc]">
+                    <td className="px-4 py-3 text-[#6b6b78]">{i + 1}</td>
+                    <td className="px-4 py-3 font-semibold text-[#1F1B2E] whitespace-nowrap">
+                      {p.user.prenoms} {p.user.nom}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-[#6b6b78] whitespace-nowrap">{p.user.matricule ?? '—'}</td>
+                    <td className="px-4 py-3 text-[#6b6b78]">{p.parish?.nom ?? '—'}</td>
+                    <td className="px-4 py-3 text-[#6b6b78]">{p.district?.nom ?? '—'}</td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap ${ADHESION_COLOR[p.adhesionStatusSnapshot]}`}>
+                        {ADHESION_LABELS[p.adhesionStatusSnapshot]}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap ${PARTICIPATION_COLOR[p.participationStatus]}`}>
+                        {PARTICIPATION_LABELS[p.participationStatus]}
+                      </span>
                     </td>
                   </tr>
-                )}
+                ))}
               </tbody>
             </table>
           </div>
-        </div>
-        <p className="text-[11px] text-[#6b6b78] text-center mb-4">
-          ⚠️ Aucun montant de cotisation n&apos;est exporté
-        </p>
-
-        <button
-          type="button"
-          onClick={handleDownload}
-          disabled={!campId || downloading}
-          className={`block w-full text-center font-bold text-sm py-3.5 rounded-xl transition ${
-            campId ? 'bg-[#2E7D32] text-white hover:bg-[#256128]' : 'bg-[#e6e6ea] text-[#6b6b78]'
-          }`}
-        >
-          {downloading ? 'Téléchargement…' : '📥 Télécharger .xlsx'}
-        </button>
         </div>
       </div>
     </div>

@@ -46,6 +46,8 @@ export const authApi = {
   login: (identifier: string, password: string) => api.post('/auth/login', { identifier, password }),
   logout: () => api.post('/auth/logout'),
   me: () => api.get('/auth/me'),
+  changePassword: (ancienMotDePasse: string, nouveauMotDePasse: string) =>
+    api.patch('/auth/change-password', { ancienMotDePasse, nouveauMotDePasse }),
 };
 
 // ─── Territories ─────────────────────────────────────────────────────────────
@@ -70,6 +72,7 @@ export const campsApi = {
 export const challengesApi = {
   list: (params?: object) => api.get('/challenges', { params }),
   get: (id: string) => api.get(`/challenges/${id}`),
+  create: (data: object) => api.post('/challenges', data),
   mySubmissions: () => api.get('/challenges/my/submissions'),
   submit: (id: string, data: object) => api.post(`/challenges/${id}/submit`, data),
   validate: (id: string, data: object) => api.post(`/challenges/submissions/${id}/validate`, data),
@@ -106,8 +109,29 @@ export const usersApi = {
   get: (id: string) => api.get(`/users/${id}`),
   create: (data: object) => api.post('/users', data),
   update: (id: string, data: object) => api.patch(`/users/${id}`, data),
-  updateAdhesion: (id: string, annee: number, statut: string) =>
-    api.patch(`/users/${id}/adhesion`, { annee, statut }),
+  updateMe: (data: { nom?: string; prenoms?: string; email?: string; telephone?: string }) =>
+    api.patch('/users/me', data),
+  uploadAvatar: (file: File) => {
+    const form = new FormData();
+    form.append('avatar', file);
+    return api.patch('/users/me/avatar', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  updateStatut: (id: string, statut: string) =>
+    api.patch(`/users/${id}/statut`, { statut }),
+  updateAdhesion: (id: string, annee: number, statut: string, file?: File) => {
+    if (file) {
+      const form = new FormData();
+      form.append('annee', String(annee));
+      form.append('statut', statut);
+      form.append('preuve', file);
+      return api.patch(`/users/${id}/adhesion`, form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+    }
+    return api.patch(`/users/${id}/adhesion`, { annee, statut });
+  },
 };
 
 // ─── Contacts ─────────────────────────────────────────────────────────────────

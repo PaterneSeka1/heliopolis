@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { codexApi } from '@/lib/api';
 import { Pill } from '@/components/ui';
+import { CreateChallengeModal } from '@/components/defis/CreateChallengeModal';
 import type { Submission, SubmissionStatus } from '@/types';
 
 type TabFilter = 'TOUTES' | 'EN_ATTENTE' | 'VALIDE' | 'REJETE';
@@ -35,6 +36,7 @@ export default function AdminDefisPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabFilter>('TOUTES');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
 
   const fetchPending = async () => {
     try {
@@ -75,8 +77,16 @@ export default function AdminDefisPage() {
       {/* Top bar */}
       <div className="flex justify-between items-center mb-5 border-b border-[#ececf0] pb-4">
         <h1 className="text-xl lg:text-2xl font-black text-[#1F1B2E]">🎯 Défis & soumissions</h1>
-        <div className="text-sm text-[#6b6b78]">
-          {pending.filter(s => s.statut === 'EN_ATTENTE').length} en attente de validation
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <span className="text-sm text-[#6b6b78]">
+            {pending.filter(s => s.statut === 'EN_ATTENTE').length} en attente
+          </span>
+          <button
+            onClick={() => setCreateOpen(true)}
+            className="bg-[#1F1B2E] text-white text-xs font-bold px-3 py-2 rounded-xl hover:bg-[#2d2640] transition-colors"
+          >
+            + Nouveau défi
+          </button>
         </div>
       </div>
 
@@ -167,6 +177,12 @@ export default function AdminDefisPage() {
           );
         })}
       </div>
+
+      <CreateChallengeModal
+        isOpen={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onCreated={() => setCreateOpen(false)}
+      />
     </div>
   );
 }

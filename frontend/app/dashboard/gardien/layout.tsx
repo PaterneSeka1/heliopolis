@@ -1,10 +1,13 @@
 'use client';
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { LogoutButton } from '@/components/auth/LogoutButton';
+import { ProfileModal } from '@/components/profile/ProfileModal';
+import { UserAvatar } from '@/components/profile/UserAvatar';
 import { useAuthStore } from '@/store/auth';
 
 const NAV = [
@@ -20,6 +23,13 @@ const NAV = [
 export default function GardienLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user } = useAuthStore();
+  const [profileOpen, setProfileOpen] = useState(false);
+
+  const currentSection = NAV.find(item =>
+    item.href === '/dashboard/gardien'
+      ? pathname === item.href
+      : pathname.startsWith(item.href),
+  );
 
   return (
     <AuthGuard roles={['GARDIEN']}>
@@ -28,7 +38,7 @@ export default function GardienLayout({ children }: { children: React.ReactNode 
         {/* ── Sidebar desktop ── */}
         <aside className="hidden lg:flex lg:flex-col w-56 bg-gradient-to-b from-[#C62828] to-[#8e1a1a] text-white flex-shrink-0">
           <div className="p-4 border-b border-white/20 flex-shrink-0 flex items-center gap-2.5">
-            <Image src="/logo.jpeg" alt="Logo" width={36} height={36} className="object-contain rounded flex-shrink-0" />
+            <Image src="/logo.jpeg" alt="Logo" width={36} height={36} className="object-contain rounded flex-shrink-0" loading="eager" preload />
             <div>
               <div className="text-base font-bold">Gardien</div>
               <div className="text-[11px] opacity-75 mt-0.5">{user?.parish?.nom ?? 'Ma paroisse'}</div>
@@ -53,21 +63,61 @@ export default function GardienLayout({ children }: { children: React.ReactNode 
           </nav>
 
           <div className="p-3 border-t border-white/20 flex-shrink-0">
-            <div className="flex items-center gap-2 px-2">
-              <div className="w-7 h-7 rounded-full bg-white/25 flex items-center justify-center text-[11px] font-bold flex-shrink-0">
-                {user ? `${user.nom[0]}${user.prenoms[0]}` : '?'}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-xs font-semibold truncate">{user?.prenoms} {user?.nom}</div>
-                <div className="text-[10px] opacity-60">{user?.matricule}</div>
-              </div>
-              <LogoutButton className="text-white/60 hover:text-white transition-colors" />
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setProfileOpen(true)}
+                className="flex items-center gap-2 flex-1 min-w-0 px-2 py-1.5 rounded-lg hover:bg-white/10 transition-colors text-left"
+                title="Modifier mon profil"
+              >
+                <UserAvatar
+                  avatarUrl={user?.avatarUrl}
+                  initials={user ? `${user.nom[0]}${user.prenoms[0]}` : '?'}
+                  sizeClass="w-7 h-7"
+                  textClass="text-[11px] font-bold"
+                  bgClass="bg-white/25"
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-semibold truncate">{user?.prenoms} {user?.nom}</div>
+                  <div className="text-[10px] opacity-60">{user?.matricule}</div>
+                </div>
+              </button>
+              <LogoutButton className="text-white/60 hover:text-white transition-colors flex-shrink-0" />
             </div>
           </div>
         </aside>
 
         {/* ── Contenu principal ── */}
         <div className="flex flex-col flex-1 overflow-hidden min-w-0">
+
+          {/* Top bar mobile */}
+          <div className="lg:hidden bg-gradient-to-r from-[#C62828] to-[#8e1a1a] text-white px-4 py-3 flex items-center gap-3 flex-shrink-0">
+            <Link
+              href="/dashboard/gardien"
+              className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center text-sm font-bold flex-shrink-0"
+            >
+              ‹
+            </Link>
+            <div className="flex-1 min-w-0">
+              <div className="text-[10px] opacity-70 uppercase tracking-wider">Gardien</div>
+              <div className="text-sm font-bold truncate">
+                {currentSection
+                  ? `${currentSection.icon} ${currentSection.label}`
+                  : '🤝 Accueil'}
+              </div>
+            </div>
+            <button
+              onClick={() => setProfileOpen(true)}
+              className="rounded-full hover:ring-2 hover:ring-white/50 transition-all flex-shrink-0"
+              title="Mon profil"
+            >
+              <UserAvatar
+                avatarUrl={user?.avatarUrl}
+                initials={user ? `${user.nom[0]}${user.prenoms[0]}` : '?'}
+                sizeClass="w-8 h-8"
+              />
+            </button>
+          </div>
+
           <main className="flex-1 flex flex-col overflow-hidden">{children}</main>
           {/* BottomNav mobile uniquement */}
           <div className="lg:hidden flex-shrink-0">
@@ -75,6 +125,8 @@ export default function GardienLayout({ children }: { children: React.ReactNode 
           </div>
         </div>
       </div>
+
+      <ProfileModal isOpen={profileOpen} onClose={() => setProfileOpen(false)} />
     </AuthGuard>
   );
 }

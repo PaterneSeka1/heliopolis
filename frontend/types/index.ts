@@ -18,7 +18,7 @@ export interface District { id: string; nom: string; region: Region; _count?: { 
 export interface Parish { id: string; nom: string; district: District; guide?: Partial<User>; _count?: { members: number }; }
 
 // ─── Users ────────────────────────────────────────────────────────────────────
-export interface Adhesion { id: string; annee: number; statut: AdhesionStatus; }
+export interface Adhesion { id: string; annee: number; statut: AdhesionStatus; preuveUrl?: string; }
 export interface User {
   id: string; nom: string; prenoms: string; matricule?: string;
   email?: string; telephone?: string; avatarUrl?: string;

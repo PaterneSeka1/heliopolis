@@ -2,14 +2,25 @@ import 'dotenv/config'; // doit être le 1er import — charge le .env avant tou
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module.js';
+import { DbRetryInterceptor } from './common/interceptors/db-retry.interceptor.js';
 import cookieParser from 'cookie-parser';
+import { join } from 'path';
+import { existsSync, mkdirSync } from 'fs';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  const avatarsDir = join(process.cwd(), 'uploads', 'avatars');
+  if (!existsSync(avatarsDir)) mkdirSync(avatarsDir, { recursive: true });
+  const adhesionsDir = join(process.cwd(), 'uploads', 'adhesions');
+  if (!existsSync(adhesionsDir)) mkdirSync(adhesionsDir, { recursive: true });
+  app.useStaticAssets(join(process.cwd(), 'uploads'), { prefix: '/uploads' });
 
   app.setGlobalPrefix('api');
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  app.useGlobalInterceptors(new DbRetryInterceptor());
   app.use(cookieParser());
   app.enableCors({
     origin: process.env.FRONTEND_URL || 'http://localhost:3000',

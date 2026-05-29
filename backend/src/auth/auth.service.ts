@@ -119,6 +119,18 @@ export class AuthService {
     return { accessToken, refreshToken: refreshTokenValue };
   }
 
+  async changePassword(userId: string, ancienMotDePasse: string, nouveauMotDePasse: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !user.passwordHash) {
+      throw new UnauthorizedException('Identifiants invalides');
+    }
+    const valid = await bcrypt.compare(ancienMotDePasse, user.passwordHash);
+    if (!valid) throw new UnauthorizedException('Mot de passe actuel incorrect');
+    const passwordHash = await bcrypt.hash(nouveauMotDePasse, 12);
+    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+    return { message: 'Mot de passe modifié avec succès' };
+  }
+
   async getMe(userId: string) {
     return this.prisma.user.findUnique({
       where: { id: userId },

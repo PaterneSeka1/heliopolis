@@ -4,6 +4,7 @@ import {
   Get,
   UnauthorizedException,
   Post,
+  Patch,
   Req,
   Res,
   UseGuards,
@@ -11,6 +12,7 @@ import {
 import { AuthService } from './auth.service.js';
 import { ActivateDto } from './dto/activate.dto.js';
 import { LoginDto } from './dto/login.dto.js';
+import { ChangePasswordDto } from './dto/change-password.dto.js';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import type { Response } from 'express';
@@ -84,5 +86,11 @@ export class AuthController {
   @Get('me')
   getMe(@CurrentUser() user: AuthUser) {
     return this.authService.getMe(user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('change-password')
+  changePassword(@Body() dto: ChangePasswordDto, @CurrentUser() user: AuthUser) {
+    return this.authService.changePassword(user.id, dto.ancienMotDePasse, dto.nouveauMotDePasse);
   }
 }

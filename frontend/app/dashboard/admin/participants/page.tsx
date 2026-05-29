@@ -4,7 +4,11 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { campsApi } from '@/lib/api';
 import { Pill, Select } from '@/components/ui';
+import { Pagination } from '@/components/ui/Pagination';
+import { usePaginationUrl } from '@/hooks/usePaginationUrl';
 import type { Camp, CampParticipant, AdhesionStatus, ParticipationStatus } from '@/types';
+
+const PER_PAGE = 10;
 
 const ADHESION_PILL: Record<AdhesionStatus, 'vert' | 'rouge' | 'or'> = {
   A_JOUR: 'vert',
@@ -46,6 +50,7 @@ function ParticipantsContent() {
   const [loadingCamps, setLoadingCamps] = useState(true);
   const [loadingParts, setLoadingParts] = useState(false);
   const [search, setSearch] = useState('');
+  const [page, setPage] = usePaginationUrl();
 
   useEffect(() => {
     (async () => {
@@ -60,8 +65,8 @@ function ParticipantsContent() {
 
   useEffect(() => {
     if (!selectedCampId) return;
-    setLoadingParts(true);
     (async () => {
+      setLoadingParts(true);
       try {
         const { data } = await campsApi.participants(selectedCampId);
         setParticipants(data);
@@ -70,12 +75,14 @@ function ParticipantsContent() {
     })();
   }, [selectedCampId]);
 
+
   const filtered = participants.filter(p => {
     const q = search.toLowerCase();
     const nom = `${p.user.prenoms ?? ''} ${p.user.nom ?? ''}`.toLowerCase();
     const mat = (p.user.matricule ?? '').toLowerCase();
     return !q || nom.includes(q) || mat.includes(q);
   });
+  const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
   const total = participants.length;
   const confirmes = participants.filter(p => ['CONFIRME', 'PRESENT'].includes(p.participationStatus)).length;
@@ -100,7 +107,7 @@ function ParticipantsContent() {
         ) : (
           <Select
             value={selectedCampId}
-            onChange={e => setSelectedCampId(e.target.value)}
+            onChange={e => { setSelectedCampId(e.target.value); setPage(1); }}
             className="w-full">
             <option value="">— Sélectionner un camp —</option>
             {camps.map(c => (
@@ -132,7 +139,7 @@ function ParticipantsContent() {
         <div className="mb-4">
           <input
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={e => { setSearch(e.target.value); setPage(1); }}
             className="bg-white border border-[#e0e0e8] rounded-xl px-3 py-2 text-sm outline-none w-72"
             placeholder="🔍 Rechercher par nom ou matricule…"
           />
@@ -152,7 +159,7 @@ function ParticipantsContent() {
           <>
             {/* Mobile : cartes */}
             <div className="lg:hidden flex flex-col gap-2">
-              {filtered.map(p => (
+              {paginated.map(p => (
                 <div key={p.id} className="bg-white border border-[#ececf0] rounded-xl p-3 flex items-center gap-3">
                   <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#6A1B9A] to-[#3d1163] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                     {p.user.nom?.[0]}{p.user.prenoms?.[0]}
@@ -188,7 +195,7 @@ function ParticipantsContent() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map(p => (
+                  {paginated.map(p => (
                     <tr key={p.id} className="border-b border-[#f0f0f4] hover:bg-[#fafafc]">
                       <td className="px-4 py-3 font-semibold text-[#1F1B2E]">{p.user.prenoms} {p.user.nom}</td>
                       <td className="px-4 py-3 text-[#6b6b78] font-mono">{p.user.matricule ?? '—'}</td>
@@ -209,6 +216,12 @@ function ParticipantsContent() {
                 </tbody>
               </table>
             </div>
+            <Pagination
+              page={page}
+              totalItems={filtered.length}
+              perPage={PER_PAGE}
+              onChange={setPage}
+            />
           </>
         )
       )}

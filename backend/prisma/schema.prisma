@@ -402,6 +402,7 @@ model Adhesion {
   validateurId       String?
   dateValidation     DateTime?
   commentaireInterne String?
+  preuveUrl          String?
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
 

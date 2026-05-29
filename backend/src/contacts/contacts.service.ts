@@ -5,7 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { ContactStatus } from '../../generated/prisma/enums.js';
+import { ContactStatus, UserRole } from '../../generated/prisma/enums.js';
 
 const USER_MINI = {
   id: true,
@@ -21,20 +21,39 @@ const USER_MINI = {
 export class ContactsService {
   constructor(private prisma: PrismaService) {}
 
-  /** Membres de la même paroisse — contacts automatiques */
+  /** Contacts automatiques — périmètre selon le rôle */
   async getParishMembers(userId: string) {
     const me = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { parishId: true },
+      select: { parishId: true, role: true, regionId: true },
     });
-    if (!me?.parishId) return [];
 
+    // ADMIN : tous les utilisateurs actifs
+    if (me?.role === UserRole.ADMIN) {
+      return this.prisma.user.findMany({
+        where: { id: { not: userId }, deletedAt: null },
+        select: USER_MINI,
+        orderBy: [{ nom: 'asc' }, { prenoms: 'asc' }],
+      });
+    }
+
+    // REGION : tous les utilisateurs de leur région
+    if (me?.role === UserRole.REGION) {
+      return this.prisma.user.findMany({
+        where: {
+          id: { not: userId },
+          deletedAt: null,
+          ...(me.regionId ? { regionId: me.regionId } : {}),
+        },
+        select: USER_MINI,
+        orderBy: [{ nom: 'asc' }, { prenoms: 'asc' }],
+      });
+    }
+
+    // Autres rôles : membres de la même paroisse
+    if (!me?.parishId) return [];
     return this.prisma.user.findMany({
-      where: {
-        parishId: me.parishId,
-        id: { not: userId },
-        deletedAt: null,
-      },
+      where: { parishId: me.parishId, id: { not: userId }, deletedAt: null },
       select: USER_MINI,
       orderBy: [{ nom: 'asc' }, { prenoms: 'asc' }],
     });
@@ -96,9 +115,15 @@ export class ContactsService {
     // Vérifier si déjà dans la même paroisse
     const me = await this.prisma.user.findUnique({
       where: { id: requesterId },
-      select: { parishId: true },
+      select: { parishId: true, role: true },
     });
-    if (me?.parishId && me.parishId === receiver.parishId) {
+    // Les membres d'une même paroisse sont déjà contacts automatiques
+    if (
+      me?.role !== UserRole.ADMIN &&
+      me?.role !== UserRole.REGION &&
+      me?.parishId &&
+      me.parishId === receiver.parishId
+    ) {
       throw new BadRequestException('Cet utilisateur est déjà dans ta paroisse');
     }
 
@@ -173,20 +198,27 @@ export class ContactsService {
     });
   }
 
-  /** Rechercher des utilisateurs (hors paroisse) */
+  /** Rechercher des utilisateurs — périmètre selon le rôle */
   async search(query: string, userId: string) {
     if (!query || query.length < 2) return [];
 
     const me = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { parishId: true },
+      select: { parishId: true, role: true, regionId: true },
     });
+
+    // Filtre territorial selon le rôle
+    const scopeFilter =
+      me?.role === UserRole.ADMIN ? {} :
+      me?.role === UserRole.REGION
+        ? (me.regionId ? { regionId: me.regionId } : {})
+        : (me?.parishId ? { parishId: { not: me.parishId } } : {});
 
     return this.prisma.user.findMany({
       where: {
         id: { not: userId },
-        parishId: me?.parishId ? { not: me.parishId } : undefined,
         deletedAt: null,
+        ...scopeFilter,
         OR: [
           { nom: { contains: query, mode: 'insensitive' } },
           { prenoms: { contains: query, mode: 'insensitive' } },

@@ -8,7 +8,8 @@ export function GardiensBlazon({ size = 140, className = '' }: { size?: number; 
       width={size}
       height={size}
       className={`object-cover flex-shrink-0 p-2 ${className}`}
-      priority
+      loading="eager"
+      preload
     />
   );
 }

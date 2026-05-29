@@ -65,7 +65,7 @@ export function AuthGuard({ children, roles }: AuthGuardProps) {
   if (checking || !user) return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="text-center">
-        <Image src="/logo.jpeg" alt="Logo" width={64} height={64} className="object-contain mx-auto mb-3" />
+        <Image src="/logo.jpeg" alt="Logo" width={64} height={64} className="object-contain mx-auto mb-3" loading="eager" preload />
         <p className="text-sm text-[#6b6b78]">Vérification…</p>
       </div>
     </div>
