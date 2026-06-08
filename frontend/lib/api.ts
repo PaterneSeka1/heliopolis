@@ -1,4 +1,5 @@
 import axios from 'axios';
+import type { DashboardStats } from '@/types/dashboard-stats';
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api';
 
@@ -53,9 +54,14 @@ export const authApi = {
 // ─── Territories ─────────────────────────────────────────────────────────────
 export const territoriesApi = {
   stats: () => api.get('/territories/stats'),
+  dashboardStats: () => api.get<DashboardStats>('/territories/dashboard-stats'),
   regions: () => api.get('/territories/regions'),
   districts: (regionId?: string) => api.get('/territories/districts', { params: { regionId } }),
   parishes: (districtId?: string) => api.get('/territories/parishes', { params: { districtId } }),
+  createDistrict: (data: { nom: string; code?: string; regionId: string }) => api.post('/territories/districts', data),
+  deleteDistrict: (id: string) => api.delete(`/territories/districts/${id}`),
+  createParish: (data: { nom: string; districtId: string }) => api.post('/territories/parishes', data),
+  deleteParish: (id: string) => api.delete(`/territories/parishes/${id}`),
 };
 
 // ─── Camps ───────────────────────────────────────────────────────────────────
@@ -91,13 +97,74 @@ export const challengesApi = {
   pending: () => api.get('/challenges/pending/submissions'),
 };
 
-// ─── Codex ────────────────────────────────────────────────────────────────────
+// ─── Conseils ─────────────────────────────────────────────────────────────────
+const API_BASE = BASE;
+
+async function publicFetch<T>(
+  path: string,
+  options: RequestInit = {},
+  accessToken?: string | null,
+): Promise<T> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string> | undefined),
+  };
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+
+  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw Object.assign(new Error(body.message ?? 'Erreur API'), {
+      status: res.status,
+      message: body.message ?? 'Erreur API',
+    });
+  }
+  return res.json() as Promise<T>;
+}
+
 export const councilsApi = {
   list:   ()                           => api.get('/councils'),
   get:    (id: string)                 => api.get(`/councils/${id}`),
   create: (data: object)               => api.post('/councils', data),
   update: (id: string, data: object)   => api.patch(`/councils/${id}`, data),
   remove: (id: string)                 => api.delete(`/councils/${id}`),
+  getParticipants: (id: string)        => api.get(`/councils/${id}/participants`),
+};
+
+export const councilsPublicApi = {
+  getByToken: (token: string) =>
+    publicFetch(`/councils/public/${token}`),
+  register: (
+    token: string,
+    data: object,
+    accessToken?: string | null,
+  ) =>
+    publicFetch(`/councils/public/${token}/register`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }, accessToken),
+  updateFeedback: (
+    token: string,
+    data: object,
+    accessToken?: string | null,
+  ) =>
+    publicFetch(`/councils/public/${token}/feedback`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }, accessToken),
+};
+
+export const logsApi = {
+  dates: () => api.get<string[]>('/logs/dates'),
+  list: (params?: {
+    date?: string;
+    action?: string;
+    category?: string;
+    actorId?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+  }) => api.get('/logs', { params }),
 };
 
 export const codexApi = {
@@ -136,6 +203,7 @@ export const messagingApi = {
   suggestedChannels:     () => api.get('/messaging/conversations/channels/suggestions'),
   createOrJoinChannel:   (channelKey: 'PAROISSE' | 'DOYENNE' | 'REGION' | 'GARDIENS' | 'GUIDES' | 'SENTINELLES') =>
     api.post('/messaging/conversations/channel', { channelKey }),
+  search: (q: string) => api.get('/messaging/search', { params: { q } }),
 };
 
 // ─── Users ────────────────────────────────────────────────────────────────────

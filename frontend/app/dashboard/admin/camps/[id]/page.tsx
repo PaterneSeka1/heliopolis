@@ -3,7 +3,8 @@ import { use, useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { campsApi } from '@/lib/api';
-import { Card, SectionTitle, Pill, Progress } from '@/components/ui';
+import { deferEffect } from '@/lib/effects';
+import { Card, SectionTitle, Pill } from '@/components/ui';
 import type { Camp, CampParticipant, CampStatus } from '@/types';
 
 const STATUTS: { value: CampStatus; label: string; color: string }[] = [
@@ -33,7 +34,7 @@ export default function AdminCampDetailPage({ params }: { params: Promise<{ id: 
     } catch { router.push('/dashboard/admin/camps'); }
   }, [id, router]);
 
-  useEffect(() => { reload(); }, [reload]);
+  useEffect(() => deferEffect(reload), [reload]);
 
   const handleStatus = async (statut: CampStatus) => {
     if (!camp || updating) return;
@@ -113,7 +114,7 @@ export default function AdminCampDetailPage({ params }: { params: Promise<{ id: 
                   className={`py-2.5 rounded-xl text-xs font-bold border transition-colors ${
                     camp.statut === s.value
                       ? 'bg-[#1F1B2E] text-white border-[#1F1B2E] cursor-default'
-                      : 'bg-white border-[#e6e6ea] text-[#1F1B2E] hover:border-[#6A1B9A] hover:text-[#6A1B9A] disabled:opacity-40'
+                      : 'bg-white border-[#e6e6ea] text-[#1F1B2E] hover:border-[#6A1B9A] hover:text-[#6A1B9A] disabled:opacity-60'
                   }`}
                 >
                   {updating && camp.statut !== s.value ? '…' : s.label}
@@ -193,4 +194,3 @@ export default function AdminCampDetailPage({ params }: { params: Promise<{ id: 
     </div>
   );
 }
-

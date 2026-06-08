@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { usePastoralYear } from '@/store/pastoralYear';
 import { useAuthStore } from '@/store/auth';
+import { deferEffect } from '@/lib/effects';
 
 export default function AdminParametresPage() {
   const { annee, load, update } = usePastoralYear();
@@ -15,8 +16,8 @@ export default function AdminParametresPage() {
   const [confirm, setConfirm] = useState(false);
   const [membresCount, setMembresCount] = useState<number | null>(null);
 
-  useEffect(() => { load(); }, [load]);
-  useEffect(() => { setInput(String(annee)); }, [annee]);
+  useEffect(() => deferEffect(load), [load]);
+  useEffect(() => deferEffect(() => setInput(String(annee))), [annee]);
 
   const newVal = parseInt(input, 10);
   const isDecreasing = !isNaN(newVal) && newVal < annee;
@@ -102,7 +103,7 @@ export default function AdminParametresPage() {
                   <button
                     onClick={handleSave}
                     disabled={saving || !isChanging}
-                    className="px-4 py-2.5 rounded-xl bg-gradient-to-br from-[#C62828] to-[#8e1a1a] text-white text-sm font-bold disabled:opacity-40 hover:opacity-90 transition-opacity"
+                    className="px-4 py-2.5 rounded-xl bg-gradient-to-br from-[#C62828] to-[#8e1a1a] text-white text-sm font-bold disabled:opacity-60 hover:opacity-90 transition-opacity"
                   >
                     Modifier
                   </button>
@@ -126,7 +127,7 @@ export default function AdminParametresPage() {
                   <button
                     onClick={handleSave}
                     disabled={saving}
-                    className="flex-1 py-2 rounded-xl bg-gradient-to-br from-[#C62828] to-[#8e1a1a] text-white text-sm font-bold disabled:opacity-40"
+                    className="flex-1 py-2 rounded-xl bg-gradient-to-br from-[#C62828] to-[#8e1a1a] text-white text-sm font-bold disabled:opacity-60"
                   >
                     {saving ? (
                       <span className="flex items-center justify-center gap-2">
@@ -138,7 +139,7 @@ export default function AdminParametresPage() {
                   <button
                     onClick={handleCancel}
                     disabled={saving}
-                    className="flex-1 py-2 rounded-xl bg-[#f0f0f4] text-[#555566] text-sm font-semibold disabled:opacity-40"
+                    className="flex-1 py-2 rounded-xl bg-[#f0f0f4] text-[#555566] text-sm font-semibold disabled:opacity-60"
                   >
                     Annuler
                   </button>

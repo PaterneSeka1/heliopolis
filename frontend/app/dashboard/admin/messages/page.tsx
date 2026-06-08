@@ -1,10 +1,12 @@
 'use client';
+import Image from 'next/image';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { messagingApi, contactsApi, usersApi } from '@/lib/api';
+import { deferEffect } from '@/lib/effects';
 import { useAuthStore } from '@/store/auth';
-import type { Conversation, ContactItem, ContactUser, Contact, User } from '@/types';
+import type { Conversation, ContactItem, Contact, User } from '@/types';
 
 type RowUser = { id: string; nom: string; prenoms: string; avatarUrl?: string; role: string; parish?: { nom: string }; district?: { nom: string } };
 
@@ -19,11 +21,6 @@ const CONV_GRADIENT: Record<string, string> = {
   PRIVE:      'from-[#1F1B2E] to-[#3a1d4d]',
   GROUPE:     'from-[#2E7D32] to-[#1a5021]',
 };
-const CANAL_LABEL: Record<string, string> = {
-  COMMUNAUTE: 'Communauté', REGION: 'Région', DOYENNE: 'District',
-  PAROISSE: 'Paroisse', GROUPE: 'Groupe', PRIVE: 'Privé',
-};
-
 type Tab = 'messages' | 'contacts';
 type FilterType = 'tous' | 'contacts' | 'demandes';
 
@@ -66,10 +63,10 @@ export default function MessagesPage() {
     : '/dashboard/admin/messages';
   const [tab, setTab] = useState<Tab>('messages');
 
-  useEffect(() => {
+  useEffect(() => deferEffect(() => {
     const saved = localStorage.getItem('messages-tab') as Tab;
     if (saved === 'messages' || saved === 'contacts') setTab(saved);
-  }, []);
+  }), []);
 
   const handleTabChange = (t: Tab) => {
     setTab(t);
@@ -83,8 +80,8 @@ export default function MessagesPage() {
       {/* ── Header ── */}
       <div className="bg-gradient-to-br from-[#C62828] to-[#8e1a1a] flex-shrink-0">
         <div className="flex items-center gap-2.5 px-4 pt-3 pb-2">
-          <div className="w-9 h-9 rounded-full bg-white/25 flex items-center justify-center font-bold text-xs text-white flex-shrink-0 overflow-hidden">
-            {user?.avatarUrl ? <img src={user.avatarUrl} className="w-full h-full object-cover" alt="" /> : initials}
+          <div className="w-9 h-9 rounded-full bg-white/25 flex items-center justify-center font-bold text-xs text-white flex-shrink-0 overflow-hidden relative">
+            {user?.avatarUrl ? <Image src={user.avatarUrl} fill className="object-cover" alt="" sizes="36px" /> : initials}
           </div>
           <h1 className="flex-1 text-[18px] font-black text-white tracking-tight">Messagerie</h1>
           <button className="w-8 h-8 flex items-center justify-center text-white/70">
@@ -126,7 +123,7 @@ function MessagesTab({ msgBase }: { msgBase: string }) {
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => { reload(); }, [reload]);
+  useEffect(() => deferEffect(reload), [reload]);
 
   const handlePin = async (conv: Conversation) => {
     await messagingApi.togglePin(conv.id).catch(() => {});
@@ -248,7 +245,7 @@ function MessagesTab({ msgBase }: { msgBase: string }) {
 
       {/* Modal confirmation suppression */}
       {deleteConfirmId && (
-        <div className="fixed inset-0 bg-black/40 flex items-end justify-center z-50">
+        <div className="fixed inset-0 bg-black/40 flex items-end justify-center z-[60] pb-16">
           <div className="bg-white rounded-t-2xl w-full max-w-lg p-5 pb-8">
             <p className="text-[15px] font-bold text-[#1F1B2E] mb-1">Supprimer cette conversation ?</p>
             <p className="text-sm text-[#9b9ba8] mb-5">Elle disparaîtra de votre liste.</p>
@@ -264,8 +261,10 @@ function MessagesTab({ msgBase }: { msgBase: string }) {
 }
 
 // ── Modal nouvelle conversation ───────────────────────────────────────────────
+type AdminConvMode = 'pick' | 'individual' | 'group' | 'channels';
+
 function NewConvModal({ onClose, onCreated }: { onClose: () => void; onCreated: (id: string) => void }) {
-  const [mode, setMode] = useState<'pick' | 'individual' | 'group'>('pick');
+  const [mode, setMode] = useState<AdminConvMode>('pick');
   const [annuaire, setAnnuaire] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [search, setSearch] = useState('');
@@ -274,12 +273,41 @@ function NewConvModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
   const [creating, setCreating] = useState(false);
   const [filterDistrict, setFilterDistrict] = useState<string | null>(null);
   const [filterParish, setFilterParish] = useState<string | null>(null);
+  const [channels, setChannels] = useState<{
+    channelKey: 'PAROISSE' | 'DOYENNE' | 'REGION' | 'GARDIENS' | 'GUIDES' | 'SENTINELLES';
+    convType: string; nom: string; description: string; icon: string;
+    territoryId: string; conversationId: string | null;
+    memberCount: number; isMember: boolean;
+  }[]>([]);
+  const [channelsLoading, setChannelsLoading] = useState(false);
+  const [joiningChannel, setJoiningChannel]   = useState<string | null>(null);
 
   useEffect(() => {
-    if (mode === 'pick') return;
-    setLoadingUsers(true);
-    usersApi.list().then(r => setAnnuaire(r.data)).catch(() => {}).finally(() => setLoadingUsers(false));
+    if (mode === 'pick' || mode === 'channels') return;
+    return deferEffect(() => {
+      setLoadingUsers(true);
+      usersApi.list().then(r => setAnnuaire(r.data)).catch(() => {}).finally(() => setLoadingUsers(false));
+    });
   }, [mode]);
+
+  const openChannels = () => {
+    setMode('channels');
+    if (channels.length > 0) return;
+    setChannelsLoading(true);
+    messagingApi.suggestedChannels()
+      .then(r => setChannels(r.data ?? []))
+      .catch(() => {})
+      .finally(() => setChannelsLoading(false));
+  };
+
+  const handleJoinChannel = async (channelKey: 'PAROISSE' | 'DOYENNE' | 'REGION' | 'GARDIENS' | 'GUIDES' | 'SENTINELLES') => {
+    setJoiningChannel(channelKey);
+    try {
+      const { data } = await messagingApi.createOrJoinChannel(channelKey);
+      onCreated(data.id);
+    } catch { /* ignore */ }
+    finally { setJoiningChannel(null); }
+  };
 
   // Listes uniques de districts et paroisses
   const districts = Array.from(
@@ -351,11 +379,14 @@ function NewConvModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
             className="w-8 h-8 flex items-center justify-center text-white/80 text-2xl leading-none"
           >‹</button>
           <h2 className="flex-1 text-[16px] font-bold text-white">
-            {mode === 'pick' ? 'Nouvelle conversation' : mode === 'individual' ? 'Message individuel' : 'Nouveau groupe'}
+            {mode === 'pick'       ? 'Nouvelle conversation'
+              : mode === 'individual' ? 'Message individuel'
+              : mode === 'channels'   ? 'Canaux d\'équipe'
+              : 'Nouveau groupe'}
           </h2>
           {mode === 'group' && (
             <button onClick={handleCreateGroup} disabled={!groupName.trim() || selected.length === 0 || creating}
-              className="text-[13px] font-bold text-white/90 bg-white/20 px-3 py-1 rounded-full disabled:opacity-40">
+              className="text-[13px] font-bold text-white/90 bg-white/20 px-3 py-1 rounded-full disabled:opacity-60">
               {creating ? '…' : `Créer${selected.length > 0 ? ` (${selected.length})` : ''}`}
             </button>
           )}
@@ -368,23 +399,97 @@ function NewConvModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
         {mode === 'pick' && (
           <div className="p-4 flex flex-col gap-3">
             {[
-              { m: 'individual' as const, icon: '🤝', gradient: 'from-[#1F1B2E] to-[#3a1d4d]', title: 'Message individuel', sub: 'Conversation privée avec un utilisateur' },
-              { m: 'group' as const,      icon: '👥', gradient: 'from-[#2E7D32] to-[#1a5021]', title: 'Groupe', sub: 'Conversation avec plusieurs personnes' },
-            ].map(({ m, icon, gradient, title, sub }) => (
-              <button key={m} onClick={() => setMode(m)}
-                className="flex items-center gap-4 px-4 py-3.5 rounded-2xl border border-[#e6e6ea] active:bg-[#F0F0F0] text-left">
+              { m: 'individual' as AdminConvMode, icon: '🤝', gradient: 'from-[#1F1B2E] to-[#3a1d4d]',
+                title: 'Message individuel', sub: 'Conversation privée avec un utilisateur',
+                action: () => setMode('individual') },
+              { m: 'group' as AdminConvMode, icon: '👥', gradient: 'from-[#2E7D32] to-[#1a5021]',
+                title: 'Créer un groupe', sub: 'Conversation avec plusieurs personnes',
+                action: () => setMode('group') },
+              { m: 'channels' as AdminConvMode, icon: '📡', gradient: 'from-[#6A1B9A] to-[#4a1370]',
+                title: 'Canaux d\'équipe', sub: 'Rejoindre les canaux paroissiaux, de district ou régionaux',
+                action: openChannels },
+            ].map(({ m, icon, gradient, title, sub, action }) => (
+              <button key={m} onClick={action}
+                className="flex items-center gap-4 px-4 py-3.5 rounded-2xl border border-[#e6e6ea] active:bg-[#F0F0F0] text-left hover:border-[#c0c0cc] transition-all duration-150">
                 <div className={`w-11 h-11 rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center text-xl flex-shrink-0`}>{icon}</div>
                 <div>
                   <p className="text-[14px] font-bold text-[#1F1B2E]">{title}</p>
                   <p className="text-[12px] text-[#9b9ba8] mt-0.5">{sub}</p>
                 </div>
+                <svg className="ml-auto text-[#d0d0d8] flex-shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="m9 18 6-6-6-6"/>
+                </svg>
               </button>
             ))}
           </div>
         )}
 
+        {/* Canaux d'équipe */}
+        {mode === 'channels' && (
+          <div className="flex-1 overflow-y-auto px-4 py-4">
+            {channelsLoading && (
+              <div className="flex flex-col items-center justify-center py-12 text-[#9b9ba8]">
+                <div className="text-3xl animate-pulse mb-3">📡</div>
+                <p className="text-sm">Recherche des canaux…</p>
+              </div>
+            )}
+            {!channelsLoading && channels.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-12 text-[#9b9ba8]">
+                <div className="text-3xl mb-3">📡</div>
+                <p className="text-sm font-semibold text-[#1F1B2E]">Aucun canal disponible</p>
+                <p className="text-xs mt-1 text-center">Aucun canal d&apos;équipe n&apos;est disponible.</p>
+              </div>
+            )}
+            {!channelsLoading && channels.length > 0 && (
+              <div className="flex flex-col gap-3">
+                <p className="text-[11px] text-[#9b9ba8] uppercase tracking-wider font-semibold mb-1">
+                  Canaux disponibles
+                </p>
+                {channels.map(ch => {
+                  const typeGradient: Record<string, string> = {
+                    PAROISSE:    'from-[#C62828] to-[#7a1717]',
+                    GARDIENS:    'from-[#C62828] to-[#7a1717]',
+                    DOYENNE:     'from-[#6A1B9A] to-[#4a1370]',
+                    GUIDES:      'from-[#6A1B9A] to-[#4a1370]',
+                    REGION:      'from-[#1F1B2E] to-[#3a1d4d]',
+                    SENTINELLES: 'from-[#1F1B2E] to-[#3a1d4d]',
+                  };
+                  const isJoining = joiningChannel === ch.channelKey;
+                  return (
+                    <div key={ch.channelKey}
+                      className="flex items-center gap-4 p-4 rounded-2xl border border-[#e6e6ea] bg-white hover:border-[#c0c0cc] transition-all duration-150">
+                      <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${typeGradient[ch.channelKey]} flex items-center justify-center text-2xl flex-shrink-0 shadow-sm`}>
+                        {ch.icon}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[14px] font-bold text-[#1F1B2E] truncate">{ch.nom}</p>
+                        <p className="text-[12px] text-[#9b9ba8] mt-0.5">{ch.description}</p>
+                        {ch.memberCount > 0 && (
+                          <p className="text-[11px] text-[#6b6b78] mt-0.5">
+                            👥 {ch.memberCount} membre{ch.memberCount > 1 ? 's' : ''}
+                          </p>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => handleJoinChannel(ch.channelKey)}
+                        disabled={isJoining}
+                        className={`flex-shrink-0 px-3.5 py-2 rounded-xl text-[12px] font-bold transition-all duration-150 disabled:opacity-60 ${
+                          ch.isMember
+                            ? 'bg-[#e8f5e9] text-[#2E7D32] border border-[#a5d6a7] hover:bg-[#2E7D32] hover:text-white'
+                            : `bg-gradient-to-r ${typeGradient[ch.channelKey]} text-white shadow-sm`
+                        }`}>
+                        {isJoining ? '…' : ch.isMember ? 'Ouvrir' : 'Rejoindre'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Liste utilisateurs */}
-        {mode !== 'pick' && (
+        {mode !== 'pick' && mode !== 'channels' && (
           <>
             {/* Nom du groupe */}
             {mode === 'group' && (
@@ -474,7 +579,7 @@ function NewConvModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
                   >
                     <div className="relative flex-shrink-0">
                       {u.avatarUrl
-                        ? <img src={u.avatarUrl} className="w-[50px] h-[50px] rounded-full object-cover" alt="" />
+                        ? <Image src={u.avatarUrl} width={50} height={50} className="w-[50px] h-[50px] rounded-full object-cover" alt="" />
                         : <div className={`w-[50px] h-[50px] rounded-full bg-gradient-to-br ${avatarCls} flex items-center justify-center text-sm font-bold text-white`}>{u.nom[0]}{u.prenoms[0]}</div>
                       }
                       {mode === 'group' && isSelected && (
@@ -548,7 +653,7 @@ function ContactsTab({ msgBase }: { msgBase: string }) {
     }).catch(() => {}).finally(() => setLoading(false));
   }, [me?.id]);
 
-  useEffect(() => { reload(); }, [reload]);
+  useEffect(() => deferEffect(reload), [reload]);
 
   const handleAccept = async (id: string) => {
     await contactsApi.accept(id).catch(() => {});
@@ -570,7 +675,7 @@ function ContactsTab({ msgBase }: { msgBase: string }) {
       <div className="flex-1 flex items-center justify-center bg-[#f7f7fb]">
         <div className="text-center text-[#6b6b78] text-sm">
           <div className="text-3xl mb-3 animate-pulse">👥</div>
-          <p>Chargement de l'annuaire…</p>
+          <p>Chargement de l&apos;annuaire…</p>
         </div>
       </div>
     );
@@ -662,7 +767,7 @@ function ContactsTab({ msgBase }: { msgBase: string }) {
                   <LetterGroup key={gKey} letter={letter} groupKey={gKey} count={contacts.length} collapsed={collapsedGroups.has(gKey)} onToggle={toggleGroup}>
                     {contacts.map(c => (
                       <ContactRow key={c.contactId} user={c.user} sub={c.user.parish?.nom} action={
-                        <button onClick={() => handleDM(c.user.id)} disabled={dmLoading === c.user.id} className="text-[11px] bg-[#1F1B2E] text-white px-3 py-1 rounded-full font-bold disabled:opacity-50">
+                        <button onClick={() => handleDM(c.user.id)} disabled={dmLoading === c.user.id} className="text-[11px] bg-[#1F1B2E] text-white px-3 py-1 rounded-full font-bold disabled:opacity-60">
                           {dmLoading === c.user.id ? '…' : '💬'}
                         </button>
                       } />
@@ -699,7 +804,7 @@ function ContactsTab({ msgBase }: { msgBase: string }) {
                   return (
                     <ContactRow key={u.id} user={u} sub={u.parish?.nom} action={
                       canDMDirectly ? (
-                        <button onClick={() => handleDM(u.id)} disabled={dmLoading === u.id} className="text-[11px] bg-[#1F1B2E] text-white px-3 py-1 rounded-full font-bold disabled:opacity-50">
+                        <button onClick={() => handleDM(u.id)} disabled={dmLoading === u.id} className="text-[11px] bg-[#1F1B2E] text-white px-3 py-1 rounded-full font-bold disabled:opacity-60">
                           {dmLoading === u.id ? '…' : '💬'}
                         </button>
                       ) : pendingReq ? (
@@ -708,7 +813,7 @@ function ContactsTab({ msgBase }: { msgBase: string }) {
                           <button onClick={() => handleDecline(pendingReq.id)} className="text-[11px] bg-white border border-[#e6e6ea] text-[#6b6b78] px-2 py-1 rounded-full font-bold">✕</button>
                         </div>
                       ) : accepted.some(c => c.user.id === u.id) ? (
-                        <button onClick={() => handleDM(u.id)} disabled={dmLoading === u.id} className="text-[11px] bg-[#1F1B2E] text-white px-3 py-1 rounded-full font-bold disabled:opacity-50">
+                        <button onClick={() => handleDM(u.id)} disabled={dmLoading === u.id} className="text-[11px] bg-[#1F1B2E] text-white px-3 py-1 rounded-full font-bold disabled:opacity-60">
                           {dmLoading === u.id ? '…' : '💬'}
                         </button>
                       ) : sent.some(c => c.receiver.id === u.id) ? (
@@ -786,6 +891,7 @@ function ConvRow({ conv, onPin, onDelete, msgBase }: {
   const lastMsg  = conv.messages?.[0];
   const timeStr  = convTimeLabel(conv.lastMessageAt);
   const preview  = lastMsg?.deletedAt ? '🚫 Message supprimé' : lastMsg?.contenu ?? '';
+  const unread   = conv.unreadCount ?? 0;
 
   const [swipeX, setSwipeX] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -826,19 +932,34 @@ function ConvRow({ conv, onPin, onDelete, msgBase }: {
       >
         <Link
           href={`${msgBase}/${conv.id}`}
-          className="flex items-center px-3 py-2.5 bg-white hover:bg-[#F5F5F5] transition-colors pr-10"
+          className={`flex items-center px-3 py-2.5 hover:bg-[#F5F5F5] transition-colors pr-10 ${unread > 0 ? 'bg-[#fafafa]' : 'bg-white'}`}
         >
           <div className={`w-[50px] h-[50px] rounded-full flex items-center justify-center text-xl text-white bg-gradient-to-br ${gradient} flex-shrink-0 shadow-sm`}>
             {icon}
           </div>
           <div className="flex-1 min-w-0 ml-3 py-1 border-b border-[#F2F2F2]">
-            <div className="flex justify-between items-baseline gap-2">
-              <span className="font-semibold text-[15px] text-[#1F1B2E] truncate">{conv.nom ?? 'Conversation'}</span>
-              {timeStr && <span className="text-[12px] text-[#9b9ba8] flex-shrink-0">{timeStr}</span>}
+            <div className="flex justify-between items-center gap-2">
+              <span className={`text-[15px] truncate ${unread > 0 ? 'font-bold text-[#1F1B2E]' : 'font-semibold text-[#1F1B2E]'}`}>
+                {conv.nom ?? 'Conversation'}
+              </span>
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                {timeStr && (
+                  <span className={`text-[12px] ${unread > 0 ? 'text-[#2E7D32] font-semibold' : 'text-[#9b9ba8]'}`}>
+                    {timeStr}
+                  </span>
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-2 mt-0.5">
-              <span className="text-[13px] text-[#9b9ba8] truncate flex-1 leading-snug">{preview}</span>
-              {conv.isPinned && <span className="text-[11px] flex-shrink-0">📌</span>}
+              <span className={`text-[13px] truncate flex-1 leading-snug ${unread > 0 ? 'text-[#1F1B2E] font-medium' : 'text-[#9b9ba8]'}`}>
+                {preview}
+              </span>
+              {conv.isPinned && !unread && <span className="text-[11px] flex-shrink-0">📌</span>}
+              {unread > 0 && (
+                <span className="flex-shrink-0 min-w-[20px] h-5 px-1.5 rounded-full bg-[#2E7D32] text-white text-[11px] font-bold flex items-center justify-center leading-none">
+                  {unread > 99 ? '99+' : unread}
+                </span>
+              )}
             </div>
           </div>
         </Link>
@@ -903,7 +1024,7 @@ function ContactRow({
   return (
     <div className="flex items-center px-4 py-3 bg-white hover:bg-[#F5F5F5] transition-colors">
       {(user as { avatarUrl?: string }).avatarUrl ? (
-        <img src={(user as { avatarUrl?: string }).avatarUrl} alt={initials} className="w-[50px] h-[50px] rounded-full object-cover flex-shrink-0" />
+        <Image src={(user as { avatarUrl?: string }).avatarUrl as string} width={50} height={50} alt={initials} className="w-[50px] h-[50px] rounded-full object-cover flex-shrink-0" />
       ) : (
         <div className={`w-[50px] h-[50px] rounded-full flex items-center justify-center text-sm font-bold text-white bg-gradient-to-br ${avatarCls} flex-shrink-0`}>
           {initials}

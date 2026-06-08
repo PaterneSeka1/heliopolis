@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { campsApi, exportApi } from '@/lib/api';
+import { deferEffect } from '@/lib/effects';
 import { usePastoralYear } from '@/store/pastoralYear';
 import { Select } from '@/components/ui';
 import type { Camp, CampParticipant, AdhesionStatus, ParticipationStatus } from '@/types';
@@ -49,7 +50,7 @@ export default function ExportPage() {
   const [cotisationCampId, setCotisationCampId] = useState('');
   const [cotisationAnnee, setCotisationAnnee]   = useState<number>(new Date().getFullYear());
 
-  useEffect(() => { setCotisationAnnee(annee); }, [annee]);
+  useEffect(() => deferEffect(() => setCotisationAnnee(annee)), [annee]);
 
   useEffect(() => {
     campsApi.list().then(r => {
@@ -61,19 +62,22 @@ export default function ExportPage() {
   useEffect(() => {
     if (!campId) return;
     let cancelled = false;
-    setLoadingParts(true);
-    campsApi.participants(campId)
-      .then(r => {
-        if (cancelled) return;
-        setParticipants(r.data);
-        setParticipantsCampId(campId);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setParticipants([]);
-        setParticipantsCampId(campId);
-      })
-      .finally(() => { if (!cancelled) setLoadingParts(false); });
+    void Promise.resolve().then(() => {
+      if (cancelled) return;
+      setLoadingParts(true);
+      campsApi.participants(campId)
+        .then(r => {
+          if (cancelled) return;
+          setParticipants(r.data);
+          setParticipantsCampId(campId);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setParticipants([]);
+          setParticipantsCampId(campId);
+        })
+        .finally(() => { if (!cancelled) setLoadingParts(false); });
+    });
     return () => { cancelled = true; };
   }, [campId]);
 
@@ -179,7 +183,7 @@ export default function ExportPage() {
             type="button"
             onClick={handleDownloadAdhesions}
             disabled={dlAdhesions || !cotisationAnnee}
-            className="w-full flex items-center justify-center gap-2 bg-gradient-to-br from-[#C62828] to-[#8e1a1a] text-white font-bold text-sm py-3 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full flex items-center justify-center gap-2 bg-gradient-to-br from-[#C62828] to-[#8e1a1a] text-white font-bold text-sm py-3 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {dlAdhesions ? (
               <>
@@ -239,7 +243,7 @@ export default function ExportPage() {
             type="button"
             onClick={handleDownload}
             disabled={!campId || downloading || !previewReady}
-            className="w-full flex items-center justify-center gap-2 bg-[#1F1B2E] text-white font-bold text-sm py-3 rounded-xl hover:bg-[#2d2640] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full flex items-center justify-center gap-2 bg-[#1F1B2E] text-white font-bold text-sm py-3 rounded-xl hover:bg-[#2d2640] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {downloading ? (
               <>

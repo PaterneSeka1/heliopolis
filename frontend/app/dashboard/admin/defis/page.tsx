@@ -1,6 +1,7 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { codexApi } from '@/lib/api';
+import { deferEffect } from '@/lib/effects';
 import { Pill } from '@/components/ui';
 import { CreateChallengeModal } from '@/components/defis/CreateChallengeModal';
 import type { Submission, SubmissionStatus } from '@/types';
@@ -38,17 +39,15 @@ export default function AdminDefisPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
 
-  const fetchPending = async () => {
+  const fetchPending = useCallback(async () => {
     try {
       const { data } = await codexApi.pending();
       setPending(data);
     } catch { /* ignore */ }
     finally { setLoading(false); }
-  };
-
-  useEffect(() => {
-    fetchPending();
   }, []);
+
+  useEffect(() => deferEffect(fetchPending), [fetchPending]);
 
   const handleApprove = async (id: string) => {
     setActionLoading(id + '-approve');
@@ -160,13 +159,13 @@ export default function AdminDefisPage() {
                       <button
                         onClick={() => handleApprove(sub.id)}
                         disabled={!!actionLoading}
-                        className="text-xs bg-[#e1f4e3] text-[#2E7D32] border border-[#2E7D32]/30 rounded-lg px-3 py-1.5 font-semibold hover:bg-[#2E7D32] hover:text-white transition-colors disabled:opacity-50">
+                        className="text-xs bg-[#e1f4e3] text-[#2E7D32] border border-[#2E7D32]/30 rounded-lg px-3 py-1.5 font-semibold hover:bg-[#2E7D32] hover:text-white transition-colors disabled:opacity-60">
                         {isApproving ? '…' : '✓ Valider'}
                       </button>
                       <button
                         onClick={() => handleReject(sub.id)}
                         disabled={!!actionLoading}
-                        className="text-xs bg-[#ffe6e6] text-[#C62828] border border-[#C62828]/30 rounded-lg px-3 py-1.5 font-semibold hover:bg-[#C62828] hover:text-white transition-colors disabled:opacity-50">
+                        className="text-xs bg-[#ffe6e6] text-[#C62828] border border-[#C62828]/30 rounded-lg px-3 py-1.5 font-semibold hover:bg-[#C62828] hover:text-white transition-colors disabled:opacity-60">
                         {isRejecting ? '…' : '✕ Rejeter'}
                       </button>
                     </>

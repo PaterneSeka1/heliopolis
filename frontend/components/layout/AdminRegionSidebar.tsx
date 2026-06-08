@@ -35,6 +35,7 @@ const ADMIN_NAV_GROUPS = [
     label: 'Système',
     items: [
       { href: '/dashboard/admin/parametres', icon: '⚙️', label: 'Paramètres' },
+      { href: '/dashboard/admin/logs',      icon: '📋', label: 'Journal' },
     ],
   },
 ];
@@ -82,7 +83,6 @@ export function AdminRegionSidebar({ onProfileClick, variant = 'admin' }: AdminR
   const { user } = useAuthStore();
 
   const navGroups = variant === 'region' ? REGION_NAV_GROUPS : ADMIN_NAV_GROUPS;
-  const rootHref = variant === 'region' ? '/dashboard/region' : '/dashboard/admin';
 
   return (
     <aside className="hidden lg:flex lg:flex-col w-60 bg-gradient-to-b from-[#C62828] to-[#8e1a1a] text-white flex-shrink-0">

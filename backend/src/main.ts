@@ -1,16 +1,21 @@
+import { ValidationPipe } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import cookieParser from 'cookie-parser';
 import 'dotenv/config'; // doit être le 1er import — charge le .env avant tout module
 import 'reflect-metadata';
-import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
-import { NestExpressApplication } from '@nestjs/platform-express';
+import { existsSync, mkdirSync } from 'fs';
+import { join } from 'path';
 import { AppModule } from './app.module.js';
 import { DbRetryInterceptor } from './common/interceptors/db-retry.interceptor.js';
-import cookieParser from 'cookie-parser';
-import { join } from 'path';
-import { existsSync, mkdirSync } from 'fs';
+import { RedisIoAdapter } from './redis/redis-io.adapter.js';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  const redisIoAdapter = new RedisIoAdapter(app);
+  await redisIoAdapter.connectToRedis();
+  app.useWebSocketAdapter(redisIoAdapter);
 
   const avatarsDir = join(process.cwd(), 'uploads', 'avatars');
   if (!existsSync(avatarsDir)) mkdirSync(avatarsDir, { recursive: true });

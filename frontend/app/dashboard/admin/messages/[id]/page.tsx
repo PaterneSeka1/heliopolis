@@ -1,4 +1,5 @@
 'use client';
+import Image from 'next/image';
 import { use, useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { messagingApi, usersApi } from '@/lib/api';
@@ -296,9 +297,9 @@ export default function AdminChatPage({ params }: { params: Promise<{ id: string
       <div className={`bg-gradient-to-r ${header.gradient} text-white px-4 py-2.5 flex items-center gap-3 flex-shrink-0`}>
         <button onClick={() => router.back()} className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center font-bold text-lg leading-none">‹</button>
         {convType === 'PRIVE' && privatePartner && (
-          <div className="w-8 h-8 rounded-full bg-white/30 flex items-center justify-center font-bold text-xs flex-shrink-0 overflow-hidden">
+          <div className="w-8 h-8 rounded-full bg-white/30 flex items-center justify-center font-bold text-xs flex-shrink-0 overflow-hidden relative">
             {privatePartner.avatarUrl
-              ? <img src={privatePartner.avatarUrl} className="w-full h-full object-cover" alt="" />
+              ? <Image src={privatePartner.avatarUrl} fill className="object-cover" alt="" sizes="32px" />
               : `${privatePartner.nom[0]}${privatePartner.prenoms[0]}`}
           </div>
         )}
@@ -516,7 +517,7 @@ export default function AdminChatPage({ params }: { params: Promise<{ id: string
         <button
           onClick={sendMessage}
           disabled={!input.trim() || sending}
-          className="w-10 h-10 rounded-full bg-gradient-to-br from-[#C62828] to-[#8e1a1a] flex items-center justify-center text-white disabled:opacity-40 flex-shrink-0 transition-opacity shadow"
+          className="w-10 h-10 rounded-full bg-gradient-to-br from-[#C62828] to-[#8e1a1a] flex items-center justify-center text-white disabled:opacity-60 flex-shrink-0 transition-opacity shadow"
         >
           {sending ? <span className="text-xs animate-pulse">…</span> : (
             <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M2 21L23 12 2 3v7l15 2-15 2v7z"/></svg>
@@ -595,7 +596,7 @@ export default function AdminChatPage({ params }: { params: Promise<{ id: string
                     return (
                       <button key={u.id} onClick={() => toggleAdd(u.id)} className="flex items-center w-full px-4 py-3 hover:bg-[#F5F5F5] transition-colors">
                         {u.avatarUrl
-                          ? <img src={u.avatarUrl} className="w-11 h-11 rounded-full object-cover flex-shrink-0" alt="" />
+                          ? <Image src={u.avatarUrl} width={44} height={44} className="w-11 h-11 rounded-full object-cover flex-shrink-0" alt="" />
                           : <div className={`w-11 h-11 rounded-full bg-gradient-to-br ${color} flex items-center justify-center text-sm font-bold text-white flex-shrink-0`}>{u.nom[0]}{u.prenoms[0]}</div>
                         }
                         <div className="flex-1 min-w-0 ml-3 border-b border-[#F2F2F2] py-1 text-left">
@@ -616,7 +617,7 @@ export default function AdminChatPage({ params }: { params: Promise<{ id: string
                   <button
                     onClick={handleConfirmAdd}
                     disabled={applyingChanges}
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-[#2E7D32] to-[#1a5021] text-white font-bold text-sm disabled:opacity-50"
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-[#2E7D32] to-[#1a5021] text-white font-bold text-sm disabled:opacity-60"
                   >
                     {applyingChanges ? 'Ajout en cours…' : `Ajouter ${selectedToAdd.length} membre${selectedToAdd.length > 1 ? 's' : ''}`}
                   </button>
@@ -659,7 +660,7 @@ export default function AdminChatPage({ params }: { params: Promise<{ id: string
                     >
                       <div className="relative flex-shrink-0">
                         {u.avatarUrl
-                          ? <img src={u.avatarUrl} className="w-[50px] h-[50px] rounded-full object-cover" alt="" />
+                          ? <Image src={u.avatarUrl} width={50} height={50} className="w-[50px] h-[50px] rounded-full object-cover" alt="" />
                           : <div className={`w-[50px] h-[50px] rounded-full bg-gradient-to-br ${color} flex items-center justify-center text-sm font-bold text-white`}>{u.nom[0]}{u.prenoms[0]}</div>
                         }
                         {m.role === 'OWNER' && (
@@ -687,7 +688,7 @@ export default function AdminChatPage({ params }: { params: Promise<{ id: string
                   <button
                     onClick={handleConfirmRemove}
                     disabled={applyingChanges}
-                    className="w-full py-3 rounded-xl bg-[#C62828] text-white font-bold text-sm disabled:opacity-50"
+                    className="w-full py-3 rounded-xl bg-[#C62828] text-white font-bold text-sm disabled:opacity-60"
                   >
                     {applyingChanges ? 'Retrait en cours…' : `Retirer ${selectedToRemove.length} membre${selectedToRemove.length > 1 ? 's' : ''}`}
                   </button>
@@ -700,7 +701,7 @@ export default function AdminChatPage({ params }: { params: Promise<{ id: string
 
       {/* ── Modal suppression WhatsApp-style ── */}
       {deleteTarget && (
-        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50"
+        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-[60] pb-16"
           onClick={() => setDeleteTarget(null)}>
           <div className="bg-white rounded-t-2xl w-full max-w-lg shadow-xl overflow-hidden"
             onClick={e => e.stopPropagation()}>
@@ -764,8 +765,10 @@ function MsgAvatar({ author }: { author: Partial<User> }) {
 
   if (author.avatarUrl) {
     return (
-      <img
+      <Image
         src={author.avatarUrl}
+        width={32}
+        height={32}
         alt={initials}
         className="w-8 h-8 rounded-full object-cover flex-shrink-0 shadow-sm"
       />
