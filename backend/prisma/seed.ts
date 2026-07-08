@@ -32,7 +32,6 @@ interface DistrictInput {
   parishes: string[];
 }
 
-
 interface SeedStructureData {
   label: string;
   communityDistrict: string;
@@ -381,7 +380,6 @@ const CLASSIQUE: SeedStructureData = {
   ],
 };
 
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Main
 // ─────────────────────────────────────────────────────────────────────────────
@@ -495,8 +493,6 @@ async function main() {
   console.log(
     `✔ ADMIN       : ${admin.prenoms} ${admin.nom}  (${admin.matricule})`,
   );
-
-
 
   // ── 10. Adhésion 2026 — compte admin ─────────────────────────────────────
   await prisma.adhesion.upsert({
@@ -714,9 +710,7 @@ async function main() {
         isPinned: true,
         isModerated: true,
         members: {
-          create: [
-            { userId: admin.id, role: 'OWNER' },
-          ],
+          create: [{ userId: admin.id, role: 'OWNER' }],
         },
       },
     });
@@ -744,8 +738,12 @@ async function main() {
   console.log('  └─────────────────┴──────────────┴──────────────────────┘');
   console.log('');
   console.log('  Pour changer de structure :');
-  console.log('  SEED_STRUCTURE=MYTHOLOGIQUE  npx prisma db seed  (structure de démo)');
-  console.log('  SEED_STRUCTURE=CLASSIQUE     npx prisma db seed  (défaut — districts officiels)');
+  console.log(
+    '  SEED_STRUCTURE=MYTHOLOGIQUE  npx prisma db seed  (structure de démo)',
+  );
+  console.log(
+    '  SEED_STRUCTURE=CLASSIQUE     npx prisma db seed  (défaut — districts officiels)',
+  );
   console.log('');
   console.log('  URL API  : http://localhost:4002/api');
   console.log('  URL App  : http://localhost:3000');
