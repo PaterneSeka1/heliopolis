@@ -3,12 +3,14 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
+import { useUnreadCounts } from '@/store/unreadCounts';
 import { authApi } from '@/lib/api';
 import type { RegionRole } from '@/types';
 
 const PRIMARY = [
   { href: '/dashboard/region',             icon: '🏠', label: 'Accueil',  prefetch: true,  exact: true  },
   { href: '/dashboard/region/camps',       icon: '⛺', label: 'Camps',    prefetch: true,  exact: false },
+  { href: '/dashboard/region/autorisations', icon: '🚪', label: 'Sorties', prefetch: false, exact: false },
   { href: '/dashboard/region/messages',    icon: '💬', label: 'Messages', prefetch: false, exact: false },
   { href: '/dashboard/region/defis',       icon: '🎯', label: 'Quêtes',   prefetch: true,  exact: false, minRole: 'ADJOINT' as RegionRole },
 ];
@@ -59,6 +61,14 @@ export function RegionMobileNav() {
   const router = useRouter();
   const { user, logout } = useAuthStore();
   const [open, setOpen] = useState(false);
+  const unreadCampRequests = useUnreadCounts(s => s.campRequests);
+  const unreadAutorisations = useUnreadCounts(s => s.autorisations);
+
+  const getBadge = (href: string) => {
+    if (href.endsWith('/autorisations')) return unreadAutorisations;
+    if (href.endsWith('/camps')) return unreadCampRequests;
+    return 0;
+  };
 
   const regionRole = user?.regionRole;
   const DRAWER_SECTIONS = filterSections(ALL_DRAWER_SECTIONS, regionRole);
@@ -150,6 +160,7 @@ export function RegionMobileNav() {
           const active = item.exact
             ? pathname === item.href
             : pathname.startsWith(item.href);
+          const badge = getBadge(item.href);
           return (
             <Link
               key={item.href}
@@ -159,7 +170,14 @@ export function RegionMobileNav() {
                 active ? 'text-[#1F1B2E]' : 'text-[#6b6b78]'
               }`}
             >
-              <span className="text-lg leading-none">{item.icon}</span>
+              <span className="relative inline-flex items-center justify-center">
+                <span className="text-lg leading-none">{item.icon}</span>
+                {badge > 0 && (
+                  <span className="absolute -top-1.5 -right-2.5 min-w-[15px] h-[15px] px-0.5 rounded-full bg-[#E55A35] text-white text-[9px] font-black flex items-center justify-center leading-none">
+                    {badge > 9 ? '9+' : badge}
+                  </span>
+                )}
+              </span>
               {item.label}
             </Link>
           );

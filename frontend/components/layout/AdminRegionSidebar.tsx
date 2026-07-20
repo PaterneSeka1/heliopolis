@@ -53,6 +53,7 @@ const REGION_NAV_GROUPS_ALL: { label: string; items: RegionNavItem[] }[] = [
     items: [
       { href: '/dashboard/region',           icon: '🏠', label: 'Accueil' },
       { href: '/dashboard/region/camps',     icon: '⛺', label: 'Camps' },
+      { href: '/dashboard/region/autorisations', icon: '🚪', label: 'Autorisations' },
       { href: '/dashboard/region/annonces',  icon: '📣', label: 'Annonces' },
       { href: '/dashboard/region/conseils',  icon: '🏛️', label: 'Conseils',    minRole: 'ADJOINT' },
       { href: '/dashboard/region/codex',     icon: '🪶', label: 'Modération',  minRole: 'ADJOINT' },
@@ -102,12 +103,16 @@ export function AdminRegionSidebar({ onProfileClick, variant = 'admin' }: AdminR
   const { user } = useAuthStore();
   const unreadMessages = useUnreadCounts(s => s.messages);
   const unreadAnnonces = useUnreadCounts(s => s.annonces);
+  const unreadCampRequests = useUnreadCounts(s => s.campRequests);
+  const unreadAutorisations = useUnreadCounts(s => s.autorisations);
 
   const navGroups = variant === 'region' ? filterRegionNav(user?.regionRole) : ADMIN_NAV_GROUPS;
 
   const getBadge = (href: string) => {
     if (href.endsWith('/messages')) return unreadMessages;
     if (href.endsWith('/annonces')) return unreadAnnonces;
+    if (href.endsWith('/autorisations')) return unreadAutorisations;
+    if (href.endsWith('/camps')) return unreadCampRequests;
     return 0;
   };
 

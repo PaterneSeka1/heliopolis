@@ -47,6 +47,20 @@ export class CampsController {
     return this.campsService.getPendingRequestsCount(user);
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.REGION)
+  @Get('autorisations/pending')
+  getPendingAutorisationsCount(@CurrentUser() user: AuthUser) {
+    return this.campsService.getPendingAutorisationsCount(user);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.REGION)
+  @Get('autorisations')
+  getAllAutorisations(@Query('statut') statut: string | undefined, @CurrentUser() user: AuthUser) {
+    return this.campsService.getAllAutorisations(user, statut);
+  }
+
   @UseGuards(OptionalJwtGuard)
   @Get(':id')
   findOne(@Param('id') id: string, @CurrentUser() user?: AuthUser) {
@@ -167,7 +181,7 @@ export class CampsController {
   // ─── Autorisations de sortie ─────────────────────────────────────────────
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SENTINELLE)
+  @Roles(UserRole.SENTINELLE, UserRole.GUIDE)
   @Post(':campId/autorisations')
   createAutorisation(
     @Param('campId') campId: string,
@@ -178,7 +192,7 @@ export class CampsController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.REGION, UserRole.SENTINELLE)
+  @Roles(UserRole.ADMIN, UserRole.REGION, UserRole.SENTINELLE, UserRole.GUIDE)
   @Get(':campId/autorisations')
   getAutorisations(
     @Param('campId') campId: string,

@@ -14,7 +14,16 @@ const STATUTS: { value: CampStatus; label: string; color: string }[] = [
   { value: 'OUVERT',    label: '✓ Ouvert',   color: 'bg-[#e1f4e3] text-[#2E7D32]' },
   { value: 'EN_COURS',  label: '▶ En cours', color: 'bg-[#fff3d6] text-[#9c7218]' },
   { value: 'CLOTURE',   label: '✕ Clôturé',  color: 'bg-[#fde8e8] text-[#E55A35]' },
+  { value: 'ARCHIVE',   label: '📦 Archivé', color: 'bg-[#f3e8ff] text-[#7e22ce]' },
 ];
+
+const TRANSITIONS: Record<CampStatus, CampStatus[]> = {
+  BROUILLON: ['OUVERT'],
+  OUVERT:    ['BROUILLON', 'EN_COURS'],
+  EN_COURS:  ['CLOTURE'],
+  CLOTURE:   ['ARCHIVE'],
+  ARCHIVE:   [],
+};
 
 const STATUT_AUTO = {
   EN_ATTENTE: { label: 'En attente', color: 'bg-[#fff3d6] text-[#9c7218]' },
@@ -154,20 +163,27 @@ export default function RegionCampDetailPage({ params }: { params: Promise<{ id:
 
         {/* ── Barre d'actions : statuts + Publier ─────────────────────── */}
         <div className="flex flex-wrap items-center gap-2 mb-6 p-3 bg-white border border-[#ececf0] rounded-2xl shadow-sm">
-          {STATUTS.map(s => (
-            <button
-              key={s.value}
-              onClick={() => handleStatus(s.value)}
-              disabled={camp.statut === s.value || updating}
-              className={`text-[11px] font-bold px-3 py-2 rounded-xl border transition-colors ${
-                camp.statut === s.value
-                  ? 'bg-[#1F1B2E] text-white border-[#1F1B2E] cursor-default'
-                  : 'bg-white border-[#e6e6ea] text-[#1F1B2E] hover:border-[#6A1B9A] hover:text-[#6A1B9A] disabled:opacity-60'
-              }`}
-            >
-              {updating && camp.statut !== s.value ? '…' : s.label}
-            </button>
-          ))}
+          {STATUTS.map(s => {
+            const isCurrent = camp.statut === s.value;
+            const isAllowed = (TRANSITIONS[camp.statut] ?? []).includes(s.value);
+            return (
+              <button
+                key={s.value}
+                onClick={() => isAllowed ? handleStatus(s.value) : undefined}
+                disabled={updating || (!isCurrent && !isAllowed)}
+                title={!isCurrent && !isAllowed ? `Transition non autorisée depuis ${camp.statut}` : undefined}
+                className={`text-[11px] font-bold px-3 py-2 rounded-xl border transition-colors ${
+                  isCurrent
+                    ? 'bg-[#1F1B2E] text-white border-[#1F1B2E] cursor-default'
+                    : isAllowed
+                      ? 'bg-white border-[#e6e6ea] text-[#1F1B2E] hover:border-[#6A1B9A] hover:text-[#6A1B9A] cursor-pointer'
+                      : 'bg-white border-[#ececf0] text-[#c8c8d0] cursor-not-allowed opacity-40'
+                }`}
+              >
+                {updating && isAllowed ? '…' : s.label}
+              </button>
+            );
+          })}
           <div className="flex-1" />
           <button
             onClick={() => setShowUploadModal(true)}

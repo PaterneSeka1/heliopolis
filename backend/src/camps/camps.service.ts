@@ -190,9 +190,25 @@ export class CampsService {
     return camp;
   }
 
+  private static readonly CAMP_TRANSITIONS: Record<CampStatus, CampStatus[]> = {
+    [CampStatus.BROUILLON]: [CampStatus.OUVERT],
+    [CampStatus.OUVERT]:    [CampStatus.BROUILLON, CampStatus.EN_COURS],
+    [CampStatus.EN_COURS]:  [CampStatus.CLOTURE],
+    [CampStatus.CLOTURE]:   [CampStatus.ARCHIVE],
+    [CampStatus.ARCHIVE]:   [],
+  };
+
   async updateStatus(id: string, statut: CampStatus, actor: AuthUser) {
-    await this.findOne(id, actor);
+    const current = await this.findOne(id, actor);
     await this.assertCampRegionalScope(id, actor);
+
+    const allowed = CampsService.CAMP_TRANSITIONS[current.statut as CampStatus] ?? [];
+    if (!allowed.includes(statut)) {
+      throw new BadRequestException(
+        `Transition invalide : ${current.statut} → ${statut}. Transitions autorisées : ${allowed.join(', ') || 'aucune'}`,
+      );
+    }
+
     const camp = await this.prisma.camp.update({
       where: { id },
       data: { statut },
@@ -201,10 +217,10 @@ export class CampsService {
     this.actionLog.record({
       action: AuditAction.STATUS_CHANGE,
       category: 'camp',
-      summary: `Statut du camp « ${camp.nom} » → ${statut}`,
+      summary: `Statut du camp « ${camp.nom} » : ${current.statut} → ${statut}`,
       actor: actor,
       target: { entityType: 'Camp', entityId: id },
-      metadata: { statut },
+      metadata: { de: current.statut, vers: statut },
     });
     return camp;
   }
@@ -452,6 +468,50 @@ export class CampsService {
     return { total, byCamp };
   }
 
+  async getPendingAutorisationsCount(user: AuthUser) {
+    if (user.role === UserRole.REGION && !user.regionId) {
+      return { total: 0, byCamp: {} as Record<string, number> };
+    }
+
+    const grouped = await this.prisma.autorisationSortie.groupBy({
+      by: ['campId'],
+      where: {
+        statut: AutorisationStatut.EN_ATTENTE,
+        ...(user.role === UserRole.REGION ? { camp: { regionId: user.regionId } } : {}),
+      },
+      _count: { id: true },
+    });
+    const byCamp: Record<string, number> = {};
+    let total = 0;
+    for (const g of grouped) {
+      byCamp[g.campId] = g._count.id;
+      total += g._count.id;
+    }
+    return { total, byCamp };
+  }
+
+  async getAllAutorisations(user: AuthUser, statut?: string) {
+    if (user.role === UserRole.REGION && !user.regionId) return [];
+
+    const where: Prisma.AutorisationSortieWhereInput = {
+      ...(user.role === UserRole.REGION ? { camp: { regionId: user.regionId } } : {}),
+    };
+    if (statut && (Object.values(AutorisationStatut) as string[]).includes(statut)) {
+      where.statut = statut as AutorisationStatut;
+    }
+
+    return this.prisma.autorisationSortie.findMany({
+      where,
+      include: {
+        camp: { select: { id: true, nom: true } },
+        demandeur: { select: { id: true, nom: true, prenoms: true } },
+        valideur: { select: { id: true, nom: true, prenoms: true } },
+        personnes: { include: { user: { select: { id: true, nom: true, prenoms: true } } } },
+      },
+      orderBy: [{ statut: 'asc' }, { createdAt: 'desc' }],
+    });
+  }
+
   async getByDistrict(campId: string) {
     return this.prisma.campParticipant.groupBy({
       by: ['districtId'],
@@ -623,8 +683,9 @@ export class CampsService {
   // ─── Autorisations de sortie ───────────────────────────────────────────────
 
   async createAutorisation(campId: string, dto: CreateAutorisationDto, actor: AuthUser) {
-    if (actor.role !== UserRole.SENTINELLE) {
-      throw new ForbiddenException('Seules les Sentinelles peuvent demander une autorisation de sortie');
+    const canCreate = actor.role === UserRole.SENTINELLE || actor.role === UserRole.GUIDE;
+    if (!canCreate) {
+      throw new ForbiddenException('Seuls les Guides et les Sentinelles peuvent demander une autorisation de sortie');
     }
 
     const camp = await this.prisma.camp.findUnique({ where: { id: campId } });
@@ -662,15 +723,20 @@ export class CampsService {
       },
     });
 
-    // Notifier les régionaux rattachés au camp
+    // Notifier les régionaux et l'admin rattachés au camp
     const regionaux = await this.prisma.user.findMany({
-      where: { role: UserRole.REGION, regionId: camp.regionId ?? undefined },
+      where: {
+        OR: [
+          { role: UserRole.REGION, regionId: camp.regionId ?? undefined },
+          { role: UserRole.ADMIN },
+        ],
+      },
       select: { id: true },
     });
     for (const r of regionaux) {
       await this.notifications.sendToUser(r.id, {
         title: 'Demande d\'autorisation de sortie',
-        body: `Une Sentinelle demande une autorisation de sortie pour ${participants.length} personne(s) — motif : ${dto.motif}`,
+        body: `Une demande d\'autorisation de sortie a été soumise pour ${participants.length} personne(s) — motif : ${dto.motif}`,
         url: `/dashboard/region/camps/${campId}`,
       });
     }
@@ -684,8 +750,8 @@ export class CampsService {
 
     const where: Prisma.AutorisationSortieWhereInput = { campId };
 
-    // Une Sentinelle ne voit que ses propres demandes
-    if (actor.role === UserRole.SENTINELLE) {
+    // Encadrants (Guide / Sentinelle) : voient uniquement leurs propres demandes
+    if (actor.role === UserRole.SENTINELLE || actor.role === UserRole.GUIDE) {
       where.demandeurId = actor.id;
     } else if (actor.role !== UserRole.ADMIN && actor.role !== UserRole.REGION) {
       throw new ForbiddenException('Accès non autorisé');

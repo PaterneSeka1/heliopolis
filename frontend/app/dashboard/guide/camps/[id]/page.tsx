@@ -57,7 +57,7 @@ export default function GuideCampDetailPage({ params }: { params: Promise<{ id: 
       setCamp(c.data);
       setParticipants(p.data as CampParticipant[]);
 
-      if (isSentinelle) {
+      if (isGuide || isSentinelle) {
         const a = await campsApi.autorisations(id);
         setAutorisations(a.data as AutorisationSortie[]);
       }
@@ -320,8 +320,8 @@ export default function GuideCampDetailPage({ params }: { params: Promise<{ id: 
                 📋 Sélectionner les participants
               </Link>
 
-              {/* ── Section Autorisations de sortie (Sentinelle uniquement) ── */}
-              {isSentinelle && (
+              {/* ── Section Autorisations de sortie (Guide & Sentinelle) ── */}
+              {(isGuide || isSentinelle) && (
                 <div className="mt-2">
                   <div className="flex items-center justify-between mb-2">
                     <SectionTitle>
@@ -412,7 +412,7 @@ export default function GuideCampDetailPage({ params }: { params: Promise<{ id: 
           <div className="bg-white rounded-3xl w-full max-w-md shadow-xl flex flex-col max-h-[90vh]">
             <div className="px-5 pt-5 pb-3 border-b border-[#ececf0] flex-shrink-0">
               <h2 className="text-base font-black text-[#1F1B2E]">Demande d&apos;autorisation de sortie</h2>
-              <p className="text-xs text-[#6b6b78] mt-0.5">Le Régional recevra la demande et devra la valider.</p>
+              <p className="text-xs text-[#6b6b78] mt-0.5">Le Régional ou l&apos;Admin recevra la demande et devra la valider.</p>
             </div>
 
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">

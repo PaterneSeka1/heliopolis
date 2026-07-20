@@ -10,9 +10,12 @@ interface UnreadCountsState {
   annonces: number;
   campRequests: number;
   byCampRequests: Record<string, number>;
+  autorisations: number;
+  byAutorisations: Record<string, number>;
   refreshMessages: () => Promise<void>;
   refreshAnnonces: (userId?: string) => Promise<void>;
   refreshCampRequests: () => Promise<void>;
+  refreshAutorisations: () => Promise<void>;
   markAnnoncesRead: (userId: string) => void;
 }
 
@@ -21,6 +24,8 @@ export const useUnreadCounts = create<UnreadCountsState>((set) => ({
   annonces: 0,
   campRequests: 0,
   byCampRequests: {},
+  autorisations: 0,
+  byAutorisations: {},
 
   refreshMessages: async () => {
     try {
@@ -47,6 +52,14 @@ export const useUnreadCounts = create<UnreadCountsState>((set) => ({
       const { data } = await campsApi.pendingRequests();
       const d = data as { total: number; byCamp: Record<string, number> };
       set({ campRequests: d.total, byCampRequests: d.byCamp });
+    } catch { /* ignore */ }
+  },
+
+  refreshAutorisations: async () => {
+    try {
+      const { data } = await campsApi.pendingAutorisations();
+      const d = data as { total: number; byCamp: Record<string, number> };
+      set({ autorisations: d.total, byAutorisations: d.byCamp });
     } catch { /* ignore */ }
   },
 

@@ -40,6 +40,7 @@ export default function DashboardGuidePage() {
   const [directReports, setDirectReports] = useState<User[]>([]);
   const [allGardiens, setAllGardiens]     = useState<User[]>([]);
   const [camps, setCamps]                 = useState<Camp[]>([]);
+  const [runningCamps, setRunningCamps]   = useState<Camp[]>([]);
   const [pending, setPending]             = useState<Submission[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading]             = useState(true);
@@ -60,16 +61,30 @@ export default function DashboardGuidePage() {
       messagingApi.conversations(),
     ];
 
+    let gIndex = -1;
+    let runningIndex = -1;
+
     if (isSentinelle && user.district?.id) {
+      gIndex = promises.length;
       promises.push(usersApi.list({ role: 'GARDIEN', districtId: user.district.id }));
     }
 
-    Promise.all(promises).then(([u, c, p, conv, gRes]) => {
-      setDirectReports((u as { data: User[] }).data);
-      setCamps((c as { data: Camp[] }).data);
-      setPending((p as { data: Submission[] }).data);
-      setConversations((conv as { data: Conversation[] }).data);
-      if (gRes) setAllGardiens((gRes as { data: User[] }).data);
+    if (isSentinelle) {
+      runningIndex = promises.length;
+      promises.push(campsApi.list({ statut: 'EN_COURS' }));
+    }
+
+    Promise.all(promises).then((results) => {
+      setDirectReports((results[0] as { data: User[] }).data);
+      setCamps((results[1] as { data: Camp[] }).data);
+      setPending((results[2] as { data: Submission[] }).data);
+      setConversations((results[3] as { data: Conversation[] }).data);
+      if (gIndex !== -1) {
+        setAllGardiens((results[gIndex] as { data: User[] }).data);
+      }
+      if (runningIndex !== -1) {
+        setRunningCamps((results[runningIndex] as { data: Camp[] }).data);
+      }
     }).catch(() => {}).finally(() => setLoading(false));
 
     const convTimer = setInterval(() =>
@@ -120,7 +135,7 @@ export default function DashboardGuidePage() {
     },
     {
       label: 'Camps',
-      value: camps.length,
+      value: camps.length + runningCamps.length,
       sub: 'ouverts ou en cours',
       icon: '⛺',
       color: '#D9A441',
@@ -388,6 +403,24 @@ export default function DashboardGuidePage() {
                       );
                     })}
                   </div>
+                </div>
+              )}
+
+              {/* Camps en cours (Sentinelle uniquement) */}
+              {isSentinelle && runningCamps.length > 0 && (
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-2.5">
+                    <h2 className="text-sm font-bold text-[#1F1B2E]">Camps en cours</h2>
+                  </div>
+                  {runningCamps.map(camp => (
+                    <div key={camp.id} className="mb-4">
+                      <CampCard camp={camp} href={`/dashboard/guide/camps/${camp.id}`} />
+                      <Link href={`/dashboard/guide/camps/${camp.id}`}
+                        className="block w-full text-center bg-[#E55A35] text-white font-bold text-sm py-2.5 rounded-b-2xl -mt-4.5 transition-colors hover:bg-[#c2421f]">
+                        🚪 Demander des permissions de sortie →
+                      </Link>
+                    </div>
+                  ))}
                 </div>
               )}
 

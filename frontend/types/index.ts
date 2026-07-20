@@ -87,6 +87,7 @@ export interface AutorisationSortiePersonne {
 export interface AutorisationSortie {
   id: string;
   campId: string;
+  camp?: { id: string; nom: string };
   demandeur: Partial<User>;
   motif: string;
   heureSortie: string;

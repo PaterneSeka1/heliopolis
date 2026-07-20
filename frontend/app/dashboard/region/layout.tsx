@@ -54,14 +54,20 @@ export default function RegionLayout({ children }: { children: React.ReactNode }
   const loadYear = usePastoralYear(s => s.load);
   const refreshMessages = useUnreadCounts(s => s.refreshMessages);
   const refreshAnnonces = useUnreadCounts(s => s.refreshAnnonces);
+  const refreshCampRequests = useUnreadCounts(s => s.refreshCampRequests);
+  const refreshAutorisations = useUnreadCounts(s => s.refreshAutorisations);
   useEffect(() => { loadYear(); }, [loadYear]);
   useEffect(() => {
     if (!user?.id) return;
     void refreshMessages();
     void refreshAnnonces(user.id);
+    void refreshCampRequests();
+    void refreshAutorisations();
     const mi = setInterval(() => void refreshMessages(), 10_000);
     const ai = setInterval(() => void refreshAnnonces(user.id), 120_000);
-    return () => { clearInterval(mi); clearInterval(ai); };
+    const ci = setInterval(() => void refreshCampRequests(), 60_000);
+    const oi = setInterval(() => void refreshAutorisations(), 30_000);
+    return () => { clearInterval(mi); clearInterval(ai); clearInterval(ci); clearInterval(oi); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
